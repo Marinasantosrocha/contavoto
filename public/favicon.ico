@@ -1,0 +1,10 @@
+<!-- Favicon -->
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="4" fill="#667eea"/>
+  <rect x="6" y="10" width="20" height="12" rx="1" fill="white"/>
+  <rect x="9" y="13" width="14" height="1" rx="0.5" fill="#667eea"/>
+  <rect x="9" y="15" width="10" height="1" rx="0.5" fill="#667eea"/>
+  <rect x="9" y="17" width="12" height="1" rx="0.5" fill="#667eea"/>
+  <circle cx="13" cy="22" r="1" fill="#10b981"/>
+  <circle cx="19" cy="22" r="1" fill="#f59e0b"/>
+</svg>

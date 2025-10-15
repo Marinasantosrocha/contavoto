@@ -1,0 +1,24 @@
+# ContaVoto - Variáveis de Ambiente
+
+# ==========================================
+# SUPABASE CONFIGURATION
+# ==========================================
+# Obtenha essas informações no Dashboard do Supabase
+# https://app.supabase.com/project/_/settings/api
+
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui
+
+# ==========================================
+# COMO CONFIGURAR:
+# ==========================================
+# 1. Copie este arquivo para .env
+# 2. Substitua os valores acima pelas suas credenciais do Supabase
+# 3. Execute o arquivo supabase-schema.sql no SQL Editor do Supabase
+# 4. Crie os usuários iniciais conforme SETUP-USUARIOS-SUPABASE.md
+
+# ==========================================
+# USUÁRIOS PADRÃO:
+# ==========================================
+# Admin: admin@contavoto.com / admin123
+# Pesquisador: pesquisador@contavoto.com / pesquisador123
