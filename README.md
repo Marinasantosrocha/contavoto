@@ -1,250 +1,93 @@
-# 🚪 PORTA A PORTA
+# ContaVoto - Sistema de Pesquisa de Campo
 
-Sistema completo de **pesquisa de campo porta a porta** com sincronização offline para Supabase.
+## 📱 Sobre o Projeto
 
-## 🎯 Sobre o Projeto
+Sistema de pesquisa de campo porta a porta com sincronização offline, desenvolvido como PWA (Progressive Web App) para funcionamento em dispositivos móveis.
 
-O **PORTA A PORTA** é um aplicativo desenvolvido para equipes de pesquisa de campo que precisam coletar dados indo de casa em casa. O sistema foi projetado para funcionar **100% offline**, permitindo que pesquisadores trabalhem em áreas sem conexão à internet e sincronizem automaticamente quando a conexão estiver disponível.
+## 🚀 Tecnologias
 
-### Para que serve?
+- **Frontend:** React + TypeScript + Vite
+- **PWA:** Service Workers + Cache API
+- **Offline:** Dexie (IndexedDB) + React Query
+- **Backend:** Supabase (PostgreSQL)
+- **IA:** OpenAI + Google Cloud Speech
+- **Estilo:** Tailwind CSS + PostCSS
 
-- 📋 Pesquisas políticas porta a porta
-- 🏘️ Levantamento de necessidades de bairros
-- 📊 Coleta de dados sobre serviços públicos
-- 🗳️ Mapeamento de demandas da população
+## ✨ Funcionalidades
 
-## 🎯 Funcionalidades Principais
+- ✅ **Pesquisa offline** com sincronização automática
+- ✅ **Gravação e transcrição** de áudio automática
+- ✅ **Interface mobile-first** responsiva
+- ✅ **PWA** instalável como app nativo
+- ✅ **Fluxo de pesquisa** por tópicos
+- ✅ **Geolocalização** automática
+- ✅ **Autenticação** e controle de usuários
 
-- ✅ **100% Offline** - Funciona sem internet, ideal para áreas sem cobertura
-- 🔄 **Sincronização Automática** - Dados sincronizam automaticamente quando online
-- 📋 **Formulários Personalizáveis** - Crie e edite formulários de pesquisa
-- 🎯 **Fluxo Guiado** - Interface passo a passo para facilitar a coleta
-- 📍 **Geolocalização** - Captura automática de coordenadas GPS
-- 📊 **Estatísticas em Tempo Real** - Acompanhe o progresso da equipe
-- 💾 **Nunca Perde Dados** - Tudo é salvo localmente primeiro
-- 📱 **Responsivo** - Funciona em celular, tablet e desktop
-- 🎨 **Interface Moderna** - Design intuitivo e fácil de usar
-- 📈 **Dashboard Completo** - Visualize todas as pesquisas realizadas
+## 🛠️ Instalação
 
-## 🏗️ Arquitetura
+```bash
+# Instalar dependências
+npm install
 
-### Como Funciona
+# Executar em desenvolvimento
+npm run dev
 
-```
-┌─────────────┐
-│ Entrevistador│
-│  (Offline)  │
-└──────┬──────┘
-       │
-       ▼
-┌──────────────────┐
-│ 1. Preenche      │
-│    Formulário    │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ 2. Salva no      │ ◄── Funciona OFFLINE
-│    IndexedDB     │     (Banco Local)
-└────────┬─────────┘
-         │
-         │  📶 Conexão?
-         │
-    ┌────┴────┐
-    │         │
-   SIM       NÃO
-    │         │
-    ▼         ▼
-┌────────┐ ┌────────┐
-│ Sync   │ │ Espera │
-│ Cloud  │ │ Online │
-└────────┘ └────────┘
+# Build para produção
+npm run build
+
+# Preview da build
+npm run preview
 ```
 
-### Fluxo de Trabalho
+## 📱 Uso
 
-1. **Início**: Entrevistador seleciona formulário e preenche dados de localização
-2. **Abordagem**: Sistema mostra script de abordagem inicial
-3. **Coleta**: Perguntas aparecem uma por vez, com validação
-4. **Condicionais**: Perguntas aparecem/desaparecem baseado em respostas anteriores
-5. **Encerramento**: Script final de agradecimento
-6. **Sincronização**: Dados são enviados ao Supabase quando houver conexão
+1. Acesse o sistema via navegador
+2. Faça login com suas credenciais
+3. Instale como PWA (opcional)
+4. Inicie uma nova pesquisa
+5. Grave respostas com áudio
+6. Sincronize quando online
 
-### Estrutura de Pastas
+## 🔧 Configuração
+
+Configure as variáveis de ambiente no arquivo `.env`:
+
+```env
+VITE_SUPABASE_URL=sua_url_supabase
+VITE_SUPABASE_ANON_KEY=sua_chave_anonima
+VITE_OPENAI_API_KEY=sua_chave_openai
+```
+
+## 📊 Estrutura do Projeto
 
 ```
 src/
-├── db/
-│   └── localDB.ts              # Dexie (IndexedDB) - Banco Local
-├── services/
-│   ├── supabaseClient.ts       # Cliente Supabase
-│   └── pesquisaService.ts      # Lógica de pesquisas e sincronização
-├── hooks/
-│   └── useOnlineStatus.ts      # Detector de conexão online/offline
-├── pages/
-│   ├── HomePage.tsx            # Tela inicial - escolha de formulário
-│   ├── PesquisaPage.tsx        # Tela de pesquisa - passo a passo
-│   └── ListaPesquisasPage.tsx  # Lista de pesquisas realizadas
-├── components/
-│   └── FormularioStep.tsx      # Componente de campo dinâmico
-├── data/
-│   └── formularioModelo.ts     # Formulário modelo pré-configurado
-├── App.tsx                     # Componente principal (roteamento)
-├── App.css                     # Estilos completos
-└── main.tsx                    # Entry point
+├── components/     # Componentes React
+├── hooks/         # Custom hooks
+├── pages/         # Páginas da aplicação
+├── services/      # Serviços e APIs
+├── styles/        # Estilos CSS
+└── data/          # Dados e modelos
 ```
 
-## 📦 Configuração
+## 👥 Contribuição
 
-### 1. Instalar dependências
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
 
-```bash
-npm install
-```
+## 📄 Licença
 
-### 2. Configurar Supabase
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
 
-Crie um arquivo `.env` na raiz do projeto:
+## 👤 Autor
 
-```env
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-chave-anon-aqui
-```
-
-### 3. Criar tabela no Supabase
-
-Execute este SQL no Supabase:
-
-```sql
-CREATE TABLE dados (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  nome TEXT NOT NULL,
-  descricao TEXT,
-  criado_em TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Habilitar Row Level Security (RLS)
-ALTER TABLE dados ENABLE ROW LEVEL SECURITY;
-
--- Política para permitir tudo (ajuste conforme necessário)
-CREATE POLICY "Allow all operations" ON dados
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
-```
-
-### 4. Executar
-
-```bash
-npm run dev
-```
-
-## 🧪 Como Testar Offline
-
-1. Abra o app no navegador
-2. Abra DevTools (F12)
-3. Vá em **Network** > marque **Offline**
-4. Tente adicionar dados - funcionará!
-5. Desmarque **Offline** - sincronizará automaticamente
-
-## 🔑 Conceitos Principais
-
-### IndexedDB via Dexie
-
-O **Dexie** é um wrapper do IndexedDB que facilita muito o uso:
-
-```typescript
-export class LocalDatabase extends Dexie {
-  dados!: Table<LocalData>;
-  
-  constructor() {
-    super('AppOfflineDB');
-    this.version(1).stores({
-      dados: '++id, uuid, sincronizado'
-    });
-  }
-}
-```
-
-### Sincronização Inteligente
-
-```typescript
-// Para cada item não sincronizado:
-if (item.uuid) {
-  // Já existe no servidor - ATUALIZAR
-  await supabase.from('dados').update(...).eq('id', item.uuid);
-} else {
-  // Novo - INSERIR
-  const { data } = await supabase.from('dados').insert(...);
-  // Salva o UUID retornado
-  await db.dados.update(item.id, { uuid: data.id });
-}
-```
-
-### Detecção de Conexão
-
-```typescript
-useEffect(() => {
-  window.addEventListener('online', handleOnline);
-  window.addEventListener('offline', handleOffline);
-}, []);
-```
-
-## 🚀 Adaptações Possíveis
-
-### Para React Native
-
-Substitua **Dexie** por:
-- **AsyncStorage** (simples, mas limitado)
-- **WatermelonDB** (recomendado para apps complexos)
-- **SQLite** via `expo-sqlite` ou `react-native-sqlite-storage`
-
-### Para Next.js
-
-Funciona igual, mas:
-- Use `'use client'` nos componentes que usam hooks
-- IndexedDB só funciona no browser (não no SSR)
-
-### Adicionar Autenticação
-
-```typescript
-// Em supabaseClient.ts
-const { data: { session } } = await supabase.auth.getSession();
-if (session) {
-  // Usuário logado
-}
-```
-
-## 📝 Melhorias Futuras
-
-- [ ] Resolver conflitos (quando mesmo registro é editado offline e online)
-- [ ] Queue de sincronização com retry automático
-- [ ] Compressão de dados para economizar banda
-- [ ] Service Worker para funcionar como PWA
-- [ ] Criptografia de dados locais sensíveis
-- [ ] Sincronização incremental (apenas campos modificados)
-
-## 🐛 Troubleshooting
-
-**Erro: "Failed to fetch"**
-- Verifique se o Supabase URL e Key estão corretos no `.env`
-
-**Dados não sincronizam**
-- Abra o console e veja os logs
-- Verifique as políticas RLS no Supabase
-- Confirme que a tabela existe
-
-**IndexedDB não funciona**
-- Alguns navegadores bloqueiam em modo privado
-- Verifique permissões do site
-
-## 📚 Documentação
-
-- [Dexie.js](https://dexie.org/)
-- [Supabase](https://supabase.com/docs)
-- [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+**Marinasantosrocha**
+- Email: 37419390marina@gmail.com
+- GitHub: [@Marinasantosrocha](https://github.com/Marinasantosrocha)
 
 ---
 
-Feito com ❤️ para funcionar offline!
-
+Desenvolvido com ❤️ para pesquisas de campo eficientes e modernas.
