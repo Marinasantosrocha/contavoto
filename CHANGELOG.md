@@ -108,3 +108,5 @@ Tipos de mudanças:
 - `Correções` - Bug fixes
 - `Segurança` - Vulnerabilidades corrigidas
 
+
+

@@ -466,3 +466,5 @@ React Query já funciona bem offline:
 
 **Agora você tem um sistema de gerenciamento de estado profissional!** 🚀
 
+
+

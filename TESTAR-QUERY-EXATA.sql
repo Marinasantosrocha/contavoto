@@ -44,3 +44,5 @@ WHERE telefone = '38998143436'
 -- 4. SE O JOIN NÃO FUNCIONAR, USAR QUERY SIMPLES
 -- ==========================================
 -- O AuthService pode precisar ser ajustado para fazer duas queries separadas
+
+

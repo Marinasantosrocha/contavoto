@@ -148,3 +148,5 @@ UPDATE usuarios SET auth_id = (
   SELECT id FROM auth.users WHERE email = 'pesquisador@contavoto.com'
 ) WHERE telefone = '11888888888';
 */
+
+

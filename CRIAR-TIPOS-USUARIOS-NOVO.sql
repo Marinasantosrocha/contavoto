@@ -59,3 +59,5 @@ ORDER BY ordinal_position;
 -- ==========================================
 -- PRONTO! Agora execute INSERIR-USUARIOS-IDS-INT.sql
 -- ==========================================
+
+

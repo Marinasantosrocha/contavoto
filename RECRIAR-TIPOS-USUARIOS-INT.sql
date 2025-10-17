@@ -168,3 +168,5 @@ DROP TABLE IF EXISTS backup_tipos_usuarios;
 -- ==========================================
 -- PRONTO! Agora os IDs são inteiros simples
 -- ==========================================
+
+

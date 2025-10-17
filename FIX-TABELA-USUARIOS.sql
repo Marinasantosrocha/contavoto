@@ -76,3 +76,5 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ==========================================
 -- PRONTO! Agora execute INSERIR-USUARIOS-SIMPLES.sql
 -- ==========================================
+
+

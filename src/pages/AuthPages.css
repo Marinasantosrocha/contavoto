@@ -227,7 +227,7 @@
 
 /* Botão secundário amarelo para call-to-action */
 .auth-form .btn-secondary {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   border: none;
   color: white;
   padding: 12px 24px;

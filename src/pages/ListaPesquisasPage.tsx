@@ -38,13 +38,19 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   };
 
   return (
-    <div className="page lista-page">
-      <header className="app-header">
-        <button onClick={onVoltar} className="btn btn-secondary">
-          ⬅️ Voltar
-        </button>
-        <h1>📊 Pesquisas Realizadas</h1>
+    <div className="app-container">
+      <header className="modern-header">
+        <div className="header-content">
+          <div className="header-left">
+            <button onClick={onVoltar} className="btn btn-secondary btn-small">
+              ⬅️ Voltar
+            </button>
+            <h1 className="header-title">Pesquisas Realizadas</h1>
+          </div>
+        </div>
       </header>
+
+      <main className="main-content">
 
       <div className="filtros">
         <button
@@ -137,6 +143,29 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
           </div>
         )}
       </div>
+      </main>
+
+      {/* Bottom Navigation */}
+      <nav className="bottom-nav">
+        <div className="bottom-nav-content">
+          <div className="nav-item">
+            <div className="nav-icon">🏠</div>
+            <span className="nav-label">HOME</span>
+          </div>
+          <div className="nav-item active">
+            <div className="nav-icon">📊</div>
+            <span className="nav-label">PESQUISAS</span>
+          </div>
+          <div className="nav-item">
+            <div className="nav-icon">👥</div>
+            <span className="nav-label">USUÁRIOS</span>
+          </div>
+          <div className="nav-item">
+            <div className="nav-icon">⚙️</div>
+            <span className="nav-label">CONF</span>
+          </div>
+        </div>
+      </nav>
 
       {/* Modal de Detalhes */}
       {pesquisaSelecionada && (

@@ -70,3 +70,5 @@ WHERE u.telefone = '11999999999';
 -- ==========================================
 -- PRONTO! Agora execute INSERIR-USUARIOS-IDS-INT.sql
 -- ==========================================
+
+

@@ -22,3 +22,5 @@ VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui
 # ==========================================
 # Admin: admin@contavoto.com / admin123
 # Pesquisador: pesquisador@contavoto.com / pesquisador123
+
+

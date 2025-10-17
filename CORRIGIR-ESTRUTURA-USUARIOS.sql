@@ -108,3 +108,5 @@ ORDER BY t.nivel_permissao DESC, u.nome;
 -- ==========================================
 -- PRONTO! Agora execute INSERIR-USUARIOS-COM-IDS.sql
 -- ==========================================
+
+

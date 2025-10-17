@@ -178,3 +178,5 @@ netstat -ano | findstr :3004
 - ✅ **Banco local independente**
 
 **Acesse**: `http://localhost:3004/` e teste à vontade! 🚀
+
+

@@ -102,3 +102,5 @@ ORDER BY t.nivel_permissao DESC;
 
 4. Execute os comandos UPDATE acima para vincular os auth_id
 */
+
+

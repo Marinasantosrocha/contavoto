@@ -98,3 +98,5 @@ SELECT
 FROM usuarios
 LEFT JOIN tipos_usuarios ON usuarios.tipo_usuario_id = tipos_usuarios.id
 WHERE telefone = '38998143436';
+
+

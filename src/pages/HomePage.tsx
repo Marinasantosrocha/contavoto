@@ -44,6 +44,7 @@ export const HomePage = ({
   const nomeEntrevistador = user.nome || 'Usuário';
   const tipoUsuario = user.tipo_usuario_id;
   const isPesquisador = tipoUsuario === 1; // ID do pesquisador
+  const isSuperAdmin = tipoUsuario === 5; // ID do superadmin
 
   useEffect(() => {
     // Carregar localização automaticamente se for pesquisador
@@ -223,27 +224,42 @@ export const HomePage = ({
             <h1 className="header-title">Olá, {nomeEntrevistador}</h1>
           </div>
           <div className="header-actions">
-            <div className={`status-badge ${isOnline ? 'online' : 'offline'}`}>
-              {isOnline ? 'Online' : 'Offline'}
+            {/* Status Online/Offline */}
+            <div className="status-indicator">
+              <div className={`status-dot ${isOnline ? 'online' : 'offline'}`}></div>
             </div>
-            <button
-              onClick={handleGoToSettings}
-              className="btn btn-ghost btn-small"
-            >
-              Config
-            </button>
-            <button
-              onClick={handleGoToPermissions}
-              className="btn btn-ghost btn-small"
-            >
-              Usuários
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="btn btn-ghost btn-small"
-            >
-              Sair
-            </button>
+            
+            {/* Menu do Usuário */}
+            <div className="user-menu">
+              <button className="user-menu-button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+              </button>
+              <div className="user-menu-dropdown">
+                <div className="user-menu-item" onClick={handleGoToSettings}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                  </svg>
+                  Configurações
+                </div>
+                {isSuperAdmin && (
+                  <div className="user-menu-item" onClick={handleGoToPermissions}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 7H16c-.8 0-1.54.37-2.01 1.01L12 10.5l-1.99-2.49A2.5 2.5 0 0 0 8 7H5.46c-.8 0-1.52.57-1.42 1.37L6.5 16H9v6h2v-6h2v6h2z"/>
+                    </svg>
+                    Usuários
+                  </div>
+                )}
+                <div className="user-menu-divider"></div>
+                <div className="user-menu-item logout" onClick={handleLogout}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                  </svg>
+                  Sair
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -252,7 +268,6 @@ export const HomePage = ({
       <main className="main-content">
         {/* Seção de Estatísticas */}
         <div className="page-section">
-          <h2 className="section-title">Dashboard</h2>
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-value">{estatisticas?.total || 0}</div>
@@ -278,19 +293,8 @@ export const HomePage = ({
           <div className="page-section">
             <div className="card">
               <div className="card-header">
-                <h2 className="card-title">📋 Nova Pesquisa</h2>
+                <h2 className="card-title">Nova Pesquisa</h2>
                 <p className="card-subtitle">Preencha os dados para iniciar uma nova pesquisa</p>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Entrevistador</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={nomeEntrevistador}
-                  disabled
-                  style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
-                />
               </div>
 
               <div className="form-group">
@@ -424,7 +428,7 @@ export const HomePage = ({
                 className="btn btn-primary btn-large w-full"
                 disabled={!formularioSelecionado || criarPesquisa.isPending || localizacaoCarregando}
               >
-                {criarPesquisa.isPending ? '⏳ Criando...' : '🚀 Iniciar Pesquisa'}
+                {criarPesquisa.isPending ? '⏳ Criando...' : 'Iniciar Pesquisa'}
               </button>
             </div>
           </div>
@@ -455,7 +459,11 @@ export const HomePage = ({
         <div className="page-section">
           <div className="modern-list">
             <div className="list-item" onClick={onVerPesquisas}>
-              <div className="list-item-icon">📊</div>
+              <div className="list-item-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                </svg>
+              </div>
               <div className="list-item-content">
                 <div className="list-item-title">Ver Pesquisas Realizadas</div>
                 <div className="list-item-subtitle">Histórico completo das pesquisas</div>
@@ -468,7 +476,11 @@ export const HomePage = ({
               onClick={handleSync}
               style={{ opacity: !isOnline || sincronizar.isPending ? 0.6 : 1 }}
             >
-              <div className="list-item-icon">🔄</div>
+              <div className="list-item-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+              </div>
               <div className="list-item-content">
                 <div className="list-item-title">
                   {sincronizar.isPending ? 'Sincronizando...' : 'Sincronizar Dados'}

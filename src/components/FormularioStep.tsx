@@ -128,3 +128,5 @@ export const FormularioStep = ({ campo, valor, onChange, preCandidato }: Formula
   );
 };
 
+
+

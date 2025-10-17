@@ -51,7 +51,7 @@ export function GeolocationCapture({
     if (!acc) return '#64748b';
     if (acc < 10) return '#10b981';
     if (acc < 50) return '#3b82f6';
-    if (acc < 100) return '#f59e0b';
+    if (acc < 100) return '#6b7280';
     return '#ef4444';
   };
 
@@ -340,3 +340,5 @@ export function GeolocationCapture({
     </div>
   );
 }
+
+

@@ -218,3 +218,5 @@ npm run preview
 - 🔄 **Sincroniza** automaticamente
 
 **Perfeito para uso em campo!** 🚀
+
+

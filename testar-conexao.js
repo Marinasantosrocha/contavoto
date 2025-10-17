@@ -75,3 +75,5 @@ async function testarConexao() {
 
 // Executar teste
 testarConexao();
+
+

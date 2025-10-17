@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
 interface AudioRecorderProps {
   onTranscript: (transcript: string) => void;
   question: string;
+  autoStart?: boolean;
 }
 
-export function AudioRecorder({ onTranscript, question }: AudioRecorderProps) {
+export function AudioRecorder({ onTranscript, question, autoStart = false }: AudioRecorderProps) {
   const {
     isRecording,
     isProcessing,
@@ -25,6 +26,13 @@ export function AudioRecorder({ onTranscript, question }: AudioRecorderProps) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  // Auto-start recording when component mounts
+  useEffect(() => {
+    if (autoStart) {
+      handleStartRecording();
+    }
+  }, [autoStart]);
 
   const handleStartRecording = async () => {
     await startRecording();

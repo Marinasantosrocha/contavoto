@@ -65,3 +65,5 @@ UPDATE usuarios SET auth_id = (
 4. Teste o login por telefone
 
 **Sistema atualizado com sucesso!** 🎉
+
+

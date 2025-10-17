@@ -110,7 +110,7 @@
 }
 
 .role-supervisor {
-  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   color: white;
 }
 
@@ -278,7 +278,7 @@
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   color: white;
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
 }
