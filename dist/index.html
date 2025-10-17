@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#667eea" />
+    <meta name="description" content="Sistema de pesquisa de campo porta a porta que funciona offline" />
+    
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Porta a Porta" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- Microsoft PWA Meta Tags -->
+    <meta name="msapplication-TileColor" content="#667eea" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <title>PORTA A PORTA - Pesquisa de Campo</title>
+    
+    <!-- Splash Screen CSS -->
+    <style>
+      #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        color: #1e293b;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      #splash-screen .logo {
+        font-size: 64px;
+        margin-bottom: 24px;
+        animation: float 3s ease-in-out infinite;
+      }
+      
+      #splash-screen .title {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        text-align: center;
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      #splash-screen .subtitle {
+        font-size: 18px;
+        color: #64748b;
+        text-align: center;
+        margin-bottom: 40px;
+        font-weight: 500;
+      }
+      
+      #splash-screen .loading {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(59, 130, 246, 0.2);
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .hide-splash {
+        opacity: 0;
+        transition: opacity 0.8s ease-out;
+        pointer-events: none;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-DFTYSYdW.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B-WW1JA6.css">
+  <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+  <body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+      <div class="logo">🚪</div>
+      <div class="title">PORTA A PORTA</div>
+      <div class="subtitle">Sistema de Pesquisa de Campo</div>
+      <div class="loading"></div>
+    </div>
+    
+    <div id="root"></div>
+    
+    <script>
+      // Hide splash screen when app loads
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const splash = document.getElementById('splash-screen');
+          splash.classList.add('hide-splash');
+          setTimeout(() => {
+            splash.style.display = 'none';
+          }, 500);
+        }, 1500); // Show splash for 1.5 seconds
+      });
+    </script>
+    
+  </body>
+</html>
