@@ -5,6 +5,7 @@ export interface User {
   telefone: string;
   nome: string;
   tipo_usuario: 'superadmin' | 'admin' | 'suporte' | 'candidato' | 'pesquisador';
+  tipo_usuario_id?: number;
   ativo: boolean;
   formularios_permitidos: string[];
   nivel_permissao: number;
@@ -55,6 +56,7 @@ export class AuthService {
       telefone: userData.telefone,
       nome: userData.nome,
       tipo_usuario: tipoData.nome,
+      tipo_usuario_id: userData.tipo_usuario_id,
       ativo: userData.ativo,
       formularios_permitidos: [],
       nivel_permissao: tipoData.nivel_permissao
@@ -101,14 +103,19 @@ export class AuthService {
       throw new Error(error.message);
     }
 
+    // Em alguns retornos, tipos_usuarios pode vir como array; normalizar
+    const tiposJoin: any = (data as any).tipos_usuarios;
+    const tipoJoinItem = Array.isArray(tiposJoin) ? tiposJoin[0] : tiposJoin;
+
     const user = {
       id: data.id,
       telefone: data.telefone,
       nome: data.nome,
-      tipo_usuario: data.tipos_usuarios.nome,
+      tipo_usuario: tipoJoinItem?.nome,
+      tipo_usuario_id: data.tipo_usuario_id,
       ativo: data.ativo,
       formularios_permitidos: [],
-      nivel_permissao: data.tipos_usuarios.nivel_permissao
+      nivel_permissao: tipoJoinItem?.nivel_permissao
     } as User;
 
     // Salvar no localStorage

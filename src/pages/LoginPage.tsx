@@ -34,9 +34,9 @@ export const LoginPage: React.FC = () => {
     <div className="auth-page login-page">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="auth-logo">C</div>
-          <h2>Bem-vindo ao ContaVoto</h2>
-          <p className="auth-subtitle">Faça login para continuar</p>
+          <div className="auth-logo">
+            <img src="/logoconta.png" alt="Logo ContaVoto" className="auth-logo-img" />
+          </div>
         </div>
 
         <form onSubmit={handleLogin} className="auth-form">
@@ -81,9 +81,7 @@ export const LoginPage: React.FC = () => {
         </form>
 
         <div className="auth-footer">
-          <p>
-            Não tem uma conta? <a href="/register">Cadastre-se</a>
-          </p>
+          <p>Todos os direitos reservados</p>
         </div>
       </div>
     </div>

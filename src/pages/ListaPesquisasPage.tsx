@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pesquisa } from '../db/localDB';
 import { usePesquisas, useDeletarPesquisa } from '../hooks/usePesquisas';
+import { BottomNav } from '../components/BottomNav';
 
 interface ListaPesquisasPageProps {
   onVoltar: () => void;
@@ -146,26 +147,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="bottom-nav">
-        <div className="bottom-nav-content">
-          <div className="nav-item">
-            <div className="nav-icon">🏠</div>
-            <span className="nav-label">HOME</span>
-          </div>
-          <div className="nav-item active">
-            <div className="nav-icon">📊</div>
-            <span className="nav-label">PESQUISAS</span>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">👥</div>
-            <span className="nav-label">USUÁRIOS</span>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">⚙️</div>
-            <span className="nav-label">CONF</span>
-          </div>
-        </div>
-      </nav>
+      <BottomNav onNavigateHome={onVoltar} />
 
       {/* Modal de Detalhes */}
       {pesquisaSelecionada && (

@@ -100,6 +100,19 @@ body {
   z-index: 10;
 }
 
+/* Versão levemente mais "grossa" para a página inicial */
+.home-header {
+  padding: calc(var(--spacing-sm) + 8px) var(--spacing-md);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 480px) {
+  .home-header {
+    padding: 14px var(--spacing-md);
+    border-bottom-width: 1px;
+  }
+}
+
 .header-content {
   display: flex;
   align-items: center;
@@ -127,6 +140,11 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 200px;
+}
+
+/* Aumentar a saudação no header da Home */
+.home-header .header-title {
+  font-size: var(--font-size-2xl);
 }
 
 .header-subtitle {
@@ -255,7 +273,7 @@ body {
 /* Ajustes para smartphones pequenos */
 @media (max-width: 480px) {
   .modern-header {
-    padding: 8px 12px;
+    padding: 12px var(--spacing-md);
   }
   
   .header-content {
@@ -303,7 +321,7 @@ body {
 /* Ajustes para mobile */
 @media (max-width: 767px) {
   .modern-header {
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-md);
   }
   
   .header-content {
@@ -345,6 +363,11 @@ body {
   .header-left {
     justify-content: flex-start;
     margin-left: 60px; /* Espaço para o botão de voltar */
+  }
+  
+  /* Na Home, não há botão de voltar: alinhar com o conteúdo */
+  .home-header .header-left {
+    margin-left: 0;
   }
   
   .header-back-btn {
@@ -440,6 +463,43 @@ body {
 .btn-ghost:hover:not(:disabled) {
   background-color: var(--white);
   color: var(--primary-teal);
+}
+
+/* Botão em estado de gravação (vermelho com bolinha piscando) */
+.recording-button {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+  animation: pulse-button 2s infinite;
+}
+
+.recording-dot {
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  animation: pulse-dot 1s infinite;
+  display: inline-block;
+}
+
+@keyframes pulse-button {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
 }
 
 /* ==========================================
@@ -681,6 +741,39 @@ body {
   overflow: hidden;
 }
 
+/* ==========================================
+   AUDIO RECORDER
+   ========================================== */
+.audio-recorder {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  box-shadow: none;
+  margin: var(--spacing-md) 0;
+}
+
+.recorder-header { text-align: center; margin-bottom: var(--spacing-lg); }
+.recorder-header h3 { font-size: var(--font-size-xl); font-weight: 700; color: var(--dark-gray); margin-bottom: var(--spacing-sm); }
+.question-text { font-size: var(--font-size-base); color: var(--gray); font-weight: 500; line-height: 1.6; }
+.recorder-controls { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-lg); }
+.recording-status { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); }
+.recording-indicator { display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-sm) var(--spacing-md); background: #dc2626; color: white; border-radius: 12px; font-weight: 600; box-shadow: none; }
+.pulse-dot { width: 12px; height: 12px; background: white; border-radius: 50%; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+.audio-ready { text-align: center; }
+.audio-info { margin-bottom: var(--spacing-md); }
+.audio-info span { font-size: var(--font-size-lg); font-weight: 600; color: var(--success); }
+.audio-info p { color: var(--gray); margin-top: var(--spacing-xs); }
+.audio-playback { margin: var(--spacing-sm) 0; display: flex; justify-content: center; }
+.audio-actions, .transcript-actions { display: flex; gap: var(--spacing-md); justify-content: center; }
+.transcript-review { text-align: center; }
+.transcript-review h4 { font-size: var(--font-size-lg); font-weight: 700; color: var(--dark-gray); margin-bottom: var(--spacing-sm); }
+.transcript-text { background: rgba(248, 250, 252, 0.9); backdrop-filter: blur(6px); padding: var(--spacing-lg); border-radius: var(--border-radius-lg); margin-bottom: var(--spacing-md); font-size: var(--font-size-base); line-height: 1.6; color: #374151; border: 1px solid rgba(59, 130, 246, 0.2); }
+.error-message { margin-top: var(--spacing-md); padding: var(--spacing-sm); background: #fee2e2; border: 1px solid #fca5a5; border-radius: var(--border-radius-md); text-align: center; }
+.error-message span { color: #dc2626; font-weight: 600; }
+
 .list-item {
   display: flex;
   align-items: center;
@@ -766,15 +859,18 @@ body {
    RESPONSIVIDADE
    ========================================== */
 @media (max-width: 768px) {
+  /* Manter o header em uma única linha no mobile */
   .header-content {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    text-align: center;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-xs);
+    text-align: left;
   }
   
   .header-actions {
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
   }
   
   .form-row {

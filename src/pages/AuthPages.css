@@ -30,20 +30,24 @@
 }
 
 .auth-logo {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
-  border-radius: 50%;
+  width: 160px;
+  height: 160px;
+  background: transparent; /* removido círculo */
+  border-radius: 0; /* sem bordas arredondadas */
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
   margin: 0 auto 16px;
-  color: white;
-  box-shadow: 
-    0 10px 25px rgba(20, 184, 166, 0.4),
-    0 0 0 4px rgba(255, 255, 255, 0.2);
-  font-weight: bold;
+  color: inherit;
+  box-shadow: none; /* sem brilho/sombra do círculo */
+}
+
+/* Imagem do logo dentro do círculo */
+.auth-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0;
 }
 
 .auth-page h2 {
@@ -115,7 +119,7 @@
 }
 
 .auth-footer p {
-  color: #64748b;
+  color: #6b7280; /* cinza médio */
   font-size: 14px;
   margin-bottom: 16px;
   font-weight: 500;
@@ -289,9 +293,8 @@
   }
   
   .auth-logo {
-    width: 64px;
-    height: 64px;
-    font-size: 24px;
+    width: 120px;
+    height: 120px;
   }
   
   .auth-page h2 {

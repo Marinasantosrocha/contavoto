@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { CampoFormulario } from '../db/localDB';
 import { FormularioStep } from '../components/FormularioStep';
 import { AudioRecorder } from '../components/AudioRecorder';
+import { BottomNav } from '../components/BottomNav';
 import { usePesquisa } from '../hooks/usePesquisas';
 import { useFormulario } from '../hooks/useFormularios';
-import { useSalvarResposta, useFinalizarPesquisa, useCancelarPesquisa } from '../hooks/usePesquisas';
+import { useSalvarResposta, useFinalizarPesquisa } from '../hooks/usePesquisas';
 
 interface PesquisaPageProps {
   pesquisaId: number;
@@ -20,13 +21,16 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   );
   const salvarResposta = useSalvarResposta();
   const finalizarPesquisa = useFinalizarPesquisa();
-  const cancelarPesquisa = useCancelarPesquisa();
+  // cancelarPesquisa não é mais usado diretamente aqui
 
   // Estados locais
-  const [campoAtualIndex, setCampoAtualIndex] = useState(0);
+  // índice do campo não é necessário para a transcrição automática atual
   const [respostas, setRespostas] = useState<{ [key: string]: any }>({});
   const [mostrarEncerramento, setMostrarEncerramento] = useState(false);
   const [modoGravacao, setModoGravacao] = useState(false);
+  const [isRecordingActive, setIsRecordingActive] = useState(false); // estado visual da gravação
+  // Controle de start/stop automático do gravador
+  const [shouldStopRecording, setShouldStopRecording] = useState(false);
   const [aceitouParticipar, setAceitouParticipar] = useState<boolean | null>(null);
   const [topicoAtualIndex, setTopicoAtualIndex] = useState(0);
 
@@ -91,20 +95,12 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     }
   };
 
-  const handleTranscript = (transcript: string) => {
-    if (topicoAtual && topicoAtual.campos.length > 0) {
-      const campoAtual = topicoAtual.campos[campoAtualIndex];
-      if (campoAtual && !campoAtual.id.startsWith('secao_')) {
-        handleResposta(campoAtual.id, transcript);
-        setModoGravacao(false);
-      }
-    }
-  };
+  // transcrição já é tratada diretamente no onTranscript do componente
 
   const handleProximoTopico = () => {
     if (topicoAtualIndex < topicos.length - 1) {
       setTopicoAtualIndex(topicoAtualIndex + 1);
-      setCampoAtualIndex(0);
+  // reset de navegação de campos não necessário
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       // Chegou ao fim
@@ -115,7 +111,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const handleAnteriorTopico = () => {
     if (topicoAtualIndex > 0) {
       setTopicoAtualIndex(topicoAtualIndex - 1);
-      setCampoAtualIndex(0);
+  // reset de navegação de campos não necessário
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -133,12 +129,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     onFinalizar();
   };
 
-  const handleCancelarPesquisa = async () => {
-    if (confirm('Tem certeza que deseja cancelar esta pesquisa?')) {
-      await cancelarPesquisa.mutateAsync(pesquisaId);
-      onCancelar();
-    }
-  };
+  // cancelar é invocado diretamente por onCancelar
 
   // Tela de Encerramento
   if (mostrarEncerramento) {
@@ -221,26 +212,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="bottom-nav">
-          <div className="bottom-nav-content">
-            <div className="nav-item">
-              <div className="nav-icon">🏠</div>
-              <span className="nav-label">HOME</span>
-            </div>
-            <div className="nav-item">
-              <div className="nav-icon">📊</div>
-              <span className="nav-label">PESQUISAS</span>
-            </div>
-            <div className="nav-item">
-              <div className="nav-icon">👥</div>
-              <span className="nav-label">USUÁRIOS</span>
-            </div>
-            <div className="nav-item">
-              <div className="nav-icon">⚙️</div>
-              <span className="nav-label">CONF</span>
-            </div>
-          </div>
-        </nav>
+        <BottomNav />
       </div>
     );
   }
@@ -388,7 +360,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                 </div>
                 
                 {/* Campos do tópico atual */}
-                {topicoAtual.campos.map((campo, index) => (
+                {topicoAtual.campos.map((campo) => (
                   <div key={campo.id} style={{ marginBottom: '16px' }}>
                     <FormularioStep
                       campo={campo}
@@ -399,33 +371,49 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                   </div>
                 ))}
 
-                {/* Botão de Gravar para o tópico */}
-                <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+                {/* Botões de Gravação: iniciar inicia imediatamente; parar para e transcreve */}
+                <div style={{ marginTop: '16px', marginBottom: '16px', display: 'flex', gap: '12px' }}>
                   <button
-                    onClick={() => setModoGravacao(!modoGravacao)}
-                    className={`btn ${modoGravacao ? 'btn-secondary' : 'btn-primary'}`}
-                    style={{ width: '100%' }}
+                    onClick={() => { setModoGravacao(true); setShouldStopRecording(false); }}
+                    className={isRecordingActive ? 'btn btn-danger recording-button' : 'btn btn-primary'}
+                    style={{ 
+                      flex: 1,
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
                   >
-                    {modoGravacao ? '✏️ Parar Gravação' : '🎤 Gravar Resposta'}
+                    {isRecordingActive && <span className="recording-dot"></span>}
+                    Gravar
+                  </button>
+                  <button
+                    onClick={() => { setShouldStopRecording(true); setModoGravacao(false); }}
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                  >
+                    ⏹️ Parar e Transcrever
                   </button>
                 </div>
 
                 {/* Componente de Gravação - Sempre visível quando ativo */}
-                {modoGravacao && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <AudioRecorder
-                      question={`${topicoAtual.titulo} - ${topicoAtual.campos.map(c => c.label).join(', ')}`}
-                      onTranscript={(transcript) => {
-                        // Salva a transcrição no primeiro campo do tópico
-                        if (topicoAtual.campos.length > 0) {
-                          handleResposta(topicoAtual.campos[0].id, transcript);
-                        }
-                        setModoGravacao(false);
-                      }}
-                      autoStart={true}
-                    />
-                  </div>
-                )}
+                {/* Componente de Gravação controlado: inicia automático quando modo=true; ao desligar, tenta transcrever */}
+                <div style={{ marginBottom: '16px' }}>
+                  <AudioRecorder
+                    question={`${topicoAtual.titulo} - ${topicoAtual.campos.map(c => c.label).join(', ')}`}
+                    onTranscript={(transcript) => {
+                      if (topicoAtual.campos.length > 0) {
+                        handleResposta(topicoAtual.campos[0].id, transcript);
+                      }
+                    }}
+                    onRecordingChange={setIsRecordingActive}
+                    autoStart={modoGravacao}
+                    shouldStop={shouldStopRecording}
+                    autoTranscribeOnStop={true}
+                    hideControls={true}
+                  />
+                </div>
 
                 {/* Navegação entre tópicos */}
                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
@@ -452,26 +440,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="bottom-nav">
-        <div className="bottom-nav-content">
-          <div className="nav-item">
-            <div className="nav-icon">🏠</div>
-            <span className="nav-label">HOME</span>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">📊</div>
-            <span className="nav-label">PESQUISAS</span>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">👥</div>
-            <span className="nav-label">USUÁRIOS</span>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">⚙️</div>
-            <span className="nav-label">CONF</span>
-          </div>
-        </div>
-      </nav>
+      <BottomNav />
     </div>
   );
 };

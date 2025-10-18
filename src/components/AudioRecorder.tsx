@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { TranscriptionService } from '../services/transcriptionService';
 
 interface AudioRecorderProps {
   onTranscript: (transcript: string) => void;
   question: string;
   autoStart?: boolean;
+  shouldStop?: boolean;
+  autoTranscribeOnStop?: boolean;
+  hideControls?: boolean; // quando true, não renderiza os botões internos
+  onRecordingChange?: (isRecording: boolean) => void; // notifica quando começa/para de gravar
 }
 
-export function AudioRecorder({ onTranscript, question, autoStart = false }: AudioRecorderProps) {
+export function AudioRecorder({ onTranscript, question, autoStart = false, shouldStop = false, autoTranscribeOnStop = true, hideControls = false, onRecordingChange }: AudioRecorderProps) {
   const {
     isRecording,
     isProcessing,
@@ -17,64 +22,94 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
     startRecording,
     stopRecording,
     clearRecording,
-    transcribeAudio,
   } = useAudioRecorder();
-  
-  // Estado local para controlar transcrição em tempo real
-  const [isRealtimeProcessing, setIsRealtimeProcessing] = useState(false);
 
+  // Estado local
+  const [isRealtimeProcessing, setIsRealtimeProcessing] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  // estados e refs para transcrição em tempo real
+  const transcriptionServiceRef = useRef<TranscriptionService | null>(null);
+  const transcriptionPromiseRef = useRef<Promise<string> | null>(null);
 
-  // Auto-start recording when component mounts
+  // Auto-start recording quando solicitado
   useEffect(() => {
     if (autoStart) {
       handleStartRecording();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
+
+  // Parar automaticamente quando solicitado
+  useEffect(() => {
+    const doStop = async () => {
+      if (shouldStop && isRecording) {
+        await handleStopRecording();
+      }
+    };
+    doStop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldStop]);
+
 
   const handleStartRecording = async () => {
     await startRecording();
-  };
-
-  const handleStopRecording = async () => {
-    await stopRecording();
-  };
-
-  const handleTranscribe = async () => {
-    if (audioBlob) {
+    if (onRecordingChange) onRecordingChange(true);
+    // Se queremos transcrever automaticamente no fim usando modo offline,
+    // iniciamos o reconhecimento em tempo real agora e paramos no final
+    if (autoTranscribeOnStop) {
       try {
-        const result = await transcribeAudio(audioBlob);
-        if (result) {
-          onTranscript(result);
-          setShowTranscript(true);
+        transcriptionServiceRef.current = new TranscriptionService();
+        if (transcriptionServiceRef.current.isSupported()) {
+          transcriptionPromiseRef.current = transcriptionServiceRef.current.transcribeRealtime();
+        } else {
+          // Se não suportado, apenas não inicia, e deixamos sem transcrição automática
+          console.warn('Transcrição em tempo real não suportada neste navegador.');
         }
-      } catch (error) {
-        console.error('Erro na transcrição:', error);
-        alert('Transcrição de arquivo não disponível. Use "Transcrever ao Vivo" para melhor precisão.');
+      } catch (err) {
+        console.warn('Falha ao iniciar transcrição em tempo real:', err);
       }
     }
   };
 
+  const handleStopRecording = async () => {
+    await stopRecording();
+    if (onRecordingChange) onRecordingChange(false);
+    // Encerrar reconhecimento se estiver ativo e obter resultado
+    if (autoTranscribeOnStop && transcriptionServiceRef.current) {
+      try {
+        transcriptionServiceRef.current.stop();
+        if (transcriptionPromiseRef.current) {
+          const result = await transcriptionPromiseRef.current;
+          if (result) {
+            onTranscript(result);
+            setShowTranscript(true);
+          }
+        }
+      } catch (err) {
+        console.warn('Transcrição em tempo real falhou ao finalizar:', err);
+      } finally {
+        transcriptionServiceRef.current = null;
+        transcriptionPromiseRef.current = null;
+      }
+    }
+  };
+
+  // transcrição sob demanda (botão "Transcrever ao Vivo") permanece abaixo
+
   const handleRealtimeTranscribe = async () => {
     try {
-      // Importar o serviço de transcrição
       const { TranscriptionService } = await import('../services/transcriptionService');
       const transcriptionService = new TranscriptionService();
-      
       if (transcriptionService.isSupported()) {
-        // Mostrar instrução para o usuário
         const userConfirmed = confirm(
           '🎤 Transcrição ao Vivo (OFFLINE)\n\n' +
           '✅ Funciona sem internet\n' +
           '✅ Usa modelo local do navegador\n' +
           '✅ Transcrição em português brasileiro\n\n' +
-          'Clique em "OK" e fale sua resposta claramente.\n' +
-          'O sistema irá transcrever automaticamente.\n\n' +
-          'Certifique-se de que o microfone está funcionando.'
+          'Clique em "OK" e fale sua resposta claramente.'
         );
-        
         if (userConfirmed) {
           setIsRealtimeProcessing(true);
           const result = await transcriptionService.transcribeRealtime();
@@ -87,12 +122,12 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
           setIsRealtimeProcessing(false);
         }
       } else {
-        alert('Transcrição não suportada neste navegador. Use Chrome ou Edge para melhor compatibilidade.');
+        alert('Transcrição não suportada neste navegador. Use Chrome ou Edge.');
       }
-    } catch (error) {
-      console.error('Erro na transcrição em tempo real:', error);
+    } catch (err) {
+      console.error('Erro na transcrição em tempo real:', err);
       setIsRealtimeProcessing(false);
-      alert('Erro na transcrição. Verifique se o microfone está funcionando ou digite manualmente.');
+      alert('Erro na transcrição. Verifique o microfone ou digite manualmente.');
     }
   };
 
@@ -108,12 +143,9 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
 
   const handlePlayAudio = () => {
     if (audioBlob && !isPlaying) {
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
-      
       const audio = new Audio(url);
       audio.onended = () => {
         setIsPlaying(false);
@@ -125,7 +157,6 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
         URL.revokeObjectURL(url);
         setAudioUrl(null);
       };
-      
       audio.play();
       setIsPlaying(true);
     }
@@ -145,18 +176,26 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
   return (
     <div className="audio-recorder">
       <div className="recorder-header">
-        <h3>🎤 Gravação de Resposta</h3>
+        <h3>Gravação de Resposta</h3>
         <p className="question-text">{question}</p>
       </div>
 
+      {/* Transcrição posicionada logo abaixo da descrição do container */}
+      {transcript && showTranscript && (
+        <div className="transcript-review" style={{ marginTop: '8px', marginBottom: '16px' }}>
+          <h4 style={{ marginBottom: '8px' }}>Resposta transcrita</h4>
+          <div className="transcript-text">{transcript}</div>
+        </div>
+      )}
+
       <div className="recorder-controls">
-        {!isRecording && !audioBlob && (
-          <button 
+        {!hideControls && !isRecording && !audioBlob && (
+          <button
             onClick={handleStartRecording}
             className="btn btn-primary btn-large"
             disabled={isProcessing}
           >
-            🎤 Iniciar Gravação
+            Iniciar Gravação
           </button>
         )}
 
@@ -166,16 +205,15 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
               <div className="pulse-dot"></div>
               <span>Gravando... Fale agora</span>
             </div>
-            <button 
-              onClick={handleStopRecording}
-              className="btn btn-danger"
-            >
-              ⏹️ Parar Gravação
-            </button>
+            {!hideControls && (
+              <button onClick={handleStopRecording} className="btn btn-danger">
+                ⏹️ Parar Gravação
+              </button>
+            )}
           </div>
         )}
 
-        {audioBlob && !transcript && !showTranscript && (
+        {!hideControls && audioBlob && !transcript && !showTranscript && (
           <div className="audio-ready">
             <div className="audio-info">
               <span>✅ Áudio gravado com sucesso!</span>
@@ -195,14 +233,9 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
                 className="btn btn-primary"
                 disabled={isRealtimeProcessing}
               >
-                {isRealtimeProcessing ? '⏳ Transcrevendo...' : '🎤 Transcrever ao Vivo'}
+                {isRealtimeProcessing ? '⌛ Transcrevendo...' : 'Transcrever ao Vivo'}
               </button>
-              <button 
-                onClick={clearRecording}
-                className="btn btn-secondary"
-              >
-                🗑️ Descartar
-              </button>
+              <button onClick={clearRecording} className="btn btn-secondary">🗑️ Descartar</button>
             </div>
             <small style={{ display: 'block', marginTop: '0.5rem', color: '#6c757d', textAlign: 'center' }}>
               💡 Transcrição funciona OFFLINE - Use "Transcrever ao Vivo" para melhor precisão
@@ -210,26 +243,10 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
           </div>
         )}
 
-        {transcript && showTranscript && (
-          <div className="transcript-review">
-            <h4>📝 Transcrição Gerada:</h4>
-            <div className="transcript-text">
-              {transcript}
-            </div>
-            <div className="transcript-actions">
-              <button 
-                onClick={handleAcceptTranscript}
-                className="btn btn-primary"
-              >
-                ✅ Aceitar Resposta
-              </button>
-              <button 
-                onClick={handleRejectTranscript}
-                className="btn btn-secondary"
-              >
-                ❌ Rejeitar
-              </button>
-            </div>
+        {transcript && showTranscript && !hideControls && (
+          <div className="transcript-actions">
+            <button onClick={handleAcceptTranscript} className="btn btn-primary">✅ Aceitar Resposta</button>
+            <button onClick={handleRejectTranscript} className="btn btn-secondary">❌ Rejeitar</button>
           </div>
         )}
       </div>
@@ -239,166 +256,6 @@ export function AudioRecorder({ onTranscript, question, autoStart = false }: Aud
           <span>⚠️ {error}</span>
         </div>
       )}
-
-      <style jsx>{`
-        .audio-recorder {
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          padding: 32px;
-          border-radius: 24px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-          margin: 24px 0;
-        }
-
-        .recorder-header {
-          text-align: center;
-          margin-bottom: 32px;
-        }
-
-        .recorder-header h3 {
-          font-size: 24px;
-          font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 16px;
-        }
-
-        .question-text {
-          font-size: 18px;
-          color: #64748b;
-          font-weight: 500;
-          line-height: 1.6;
-        }
-
-        .recorder-controls {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 24px;
-        }
-
-        .recording-status {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
-        }
-
-        .recording-indicator {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px 24px;
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-          color: white;
-          border-radius: 16px;
-          font-weight: 600;
-          box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
-        }
-
-        .pulse-dot {
-          width: 12px;
-          height: 12px;
-          background: white;
-          border-radius: 50%;
-          animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-
-        .audio-ready {
-          text-align: center;
-        }
-
-        .audio-info {
-          margin-bottom: 20px;
-        }
-
-        .audio-info span {
-          font-size: 18px;
-          font-weight: 600;
-          color: #10b981;
-        }
-
-        .audio-info p {
-          color: #64748b;
-          margin-top: 8px;
-        }
-
-        .audio-playback {
-          margin: 16px 0;
-          display: flex;
-          justify-content: center;
-        }
-
-        .audio-actions {
-          display: flex;
-          gap: 16px;
-          justify-content: center;
-        }
-
-        .transcript-review {
-          text-align: center;
-        }
-
-        .transcript-review h4 {
-          font-size: 20px;
-          font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 16px;
-        }
-
-        .transcript-text {
-          background: rgba(248, 250, 252, 0.8);
-          backdrop-filter: blur(10px);
-          padding: 24px;
-          border-radius: 16px;
-          margin-bottom: 24px;
-          font-size: 16px;
-          line-height: 1.6;
-          color: #374151;
-          border: 2px solid rgba(59, 130, 246, 0.2);
-        }
-
-        .transcript-actions {
-          display: flex;
-          gap: 16px;
-          justify-content: center;
-        }
-
-        .error-message {
-          margin-top: 20px;
-          padding: 16px;
-          background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-          border: 2px solid #fca5a5;
-          border-radius: 16px;
-          text-align: center;
-        }
-
-        .error-message span {
-          color: #dc2626;
-          font-weight: 600;
-        }
-
-        @media (max-width: 768px) {
-          .audio-recorder {
-            padding: 24px;
-          }
-
-          .audio-actions,
-          .transcript-actions {
-            flex-direction: column;
-          }
-
-          .recording-indicator {
-            flex-direction: column;
-            text-align: center;
-          }
-        }
-      `}</style>
     </div>
   );
 }
