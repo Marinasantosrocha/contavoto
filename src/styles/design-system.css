@@ -131,7 +131,7 @@ body {
 }
 
 .header-title {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-2xl);
   font-weight: 600;
   color: var(--primary-teal);
   text-transform: none;
@@ -142,7 +142,7 @@ body {
   max-width: 200px;
 }
 
-/* Aumentar a saudação no header da Home */
+/* Mantém o mesmo tamanho para todas as páginas */
 .home-header .header-title {
   font-size: var(--font-size-2xl);
 }
@@ -657,7 +657,7 @@ body {
    ========================================== */
 .main-content {
   flex: 1;
-  padding: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg); /* Aumentado padding lateral para 1.5rem */
   width: 100%;
   margin: 0;
   max-width: none;

@@ -519,7 +519,7 @@ body {
 }
 
 .encerramento-texto strong {
-  color: #3b82f6;
+  color: #20B2AA; /* Cor primária (verde água) em vez de azul */
   font-weight: 700;
 }
 

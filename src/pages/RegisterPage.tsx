@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
+import { trocarFotoUsuario } from '../services/storageService';
 import '../styles/design-system.css';
 
 interface TipoUsuario {
@@ -17,6 +18,9 @@ export const RegisterPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [tipoUsuario, setTipoUsuario] = useState<number | null>(null);
+  const [candidato, setCandidato] = useState('');
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string>('');
   const [tiposUsuarios, setTiposUsuarios] = useState<TipoUsuario[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +43,34 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
+  const handleFotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validar tipo
+      const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!tiposPermitidos.includes(file.type)) {
+        setError('Tipo de arquivo não permitido. Use JPG, PNG ou WebP.');
+        return;
+      }
+
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Arquivo muito grande. Tamanho máximo: 5MB.');
+        return;
+      }
+
+      setFotoFile(file);
+      
+      // Criar preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      setError('');
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -58,32 +90,53 @@ export const RegisterPage: React.FC = () => {
 
     try {
       // Registrar usuário no banco com tipo
-      const { data: usuarioData, error: usuarioError } = await supabase
+      const usuarioData: any = {
+        nome,
+        telefone,
+        senha: password, // Em produção, use hash da senha
+        tipo_usuario_id: tipoUsuario,
+        ativo: true,
+        criado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString()
+      };
+
+      // Se for pesquisador, adicionar o campo candidato
+      if (tipoUsuario === 1 && candidato) {
+        usuarioData.candidato = candidato;
+      }
+
+      const { data: usuarioCriado, error: usuarioError } = await supabase
         .from('usuarios')
-        .insert({
-          nome,
-          telefone,
-          senha: password, // Em produção, use hash da senha
-          tipo_usuario_id: tipoUsuario,
-          ativo: true,
-          criado_em: new Date().toISOString(),
-          atualizado_em: new Date().toISOString()
-        })
+        .insert(usuarioData)
         .select()
         .single();
 
       if (usuarioError) throw usuarioError;
 
+      // Se tiver foto, fazer upload
+      let fotoUrl = null;
+      if (fotoFile) {
+        const resultadoFoto = await trocarFotoUsuario(fotoFile, usuarioCriado.id);
+        if (resultadoFoto.sucesso) {
+          fotoUrl = resultadoFoto.url;
+        } else {
+          console.error('Erro ao fazer upload da foto:', resultadoFoto.erro);
+        }
+      }
+
       // Salvar no localStorage para login automático
       const userData = {
-        id: usuarioData.id,
-        nome: usuarioData.nome,
-        telefone: usuarioData.telefone,
-        tipo_usuario_id: usuarioData.tipo_usuario_id,
-        ativo: usuarioData.ativo
+        id: usuarioCriado.id,
+        nome: usuarioCriado.nome,
+        telefone: usuarioCriado.telefone,
+        tipo_usuario_id: usuarioCriado.tipo_usuario_id,
+        ativo: usuarioCriado.ativo,
+        candidato: usuarioCriado.candidato,
+        foto_url: fotoUrl || undefined
       };
       
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('usuario', JSON.stringify(userData));
       
       alert('Usuário criado com sucesso!');
       navigate('/');
@@ -98,15 +151,29 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className="app-container">
       {/* Header Moderno */}
-      <header className="modern-header">
-        <button 
-          className="btn btn-ghost btn-small header-back-btn"
-          onClick={() => navigate('/login')}
-        >
-          ←
-        </button>
+      <header className="modern-header home-header">
         <div className="header-content">
           <div className="header-left">
+            <svg 
+              onClick={() => navigate('/login')}
+              width="32" 
+              height="32" 
+              viewBox="0 0 24 24" 
+              fill="none"
+              style={{ 
+                marginRight: '12px',
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+            >
+              <path 
+                d="M15 18L9 12L15 6" 
+                stroke="#20B2AA" 
+                strokeWidth="3" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+            </svg>
             <h1 className="header-title">Criar Conta</h1>
           </div>
         </div>
@@ -180,6 +247,83 @@ export const RegisterPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Campo Candidato - apenas para pesquisadores */}
+              {tipoUsuario === 1 && (
+                <div className="form-group">
+                  <label className="form-label">Candidato *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={candidato}
+                    onChange={(e) => setCandidato(e.target.value)}
+                    placeholder="Nome do candidato"
+                    required
+                  />
+                  <small style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                    Digite o nome do candidato associado a este pesquisador
+                  </small>
+                </div>
+              )}
+
+              {/* Campo de Foto */}
+              <div className="form-group">
+                <label className="form-label">Foto de Perfil (opcional)</label>
+                
+                {fotoPreview && (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    marginBottom: '16px' 
+                  }}>
+                    <img 
+                      src={fotoPreview} 
+                      alt="Preview"
+                      style={{ 
+                        width: '120px', 
+                        height: '120px', 
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '3px solid #20B2AA'
+                      }}
+                    />
+                  </div>
+                )}
+                
+                <label 
+                  htmlFor="foto-upload" 
+                  className="btn btn-secondary w-full"
+                  style={{ cursor: 'pointer' }}
+                >
+                  <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none"
+                    style={{ marginRight: '8px', display: 'inline-block', verticalAlign: 'middle' }}
+                  >
+                    <path 
+                      d="M12 5C8.68629 5 6 7.68629 6 11C6 14.3137 8.68629 17 12 17C15.3137 17 18 14.3137 18 11C18 7.68629 15.3137 5 12 5ZM12 15C9.79086 15 8 13.2091 8 11C8 8.79086 9.79086 7 12 7C14.2091 7 16 8.79086 16 11C16 13.2091 14.2091 15 12 15Z" 
+                      fill="#6b7280"
+                    />
+                    <path 
+                      d="M4 20H20V22H4V20Z" 
+                      fill="#6b7280"
+                    />
+                  </svg>
+                  {fotoPreview ? 'Alterar Foto' : 'Selecionar Foto'}
+                </label>
+                <input
+                  id="foto-upload"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleFotoChange}
+                  style={{ display: 'none' }}
+                />
+                <small style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                  JPG, PNG ou WebP • Máximo 5MB
+                </small>
               </div>
 
               {error && (

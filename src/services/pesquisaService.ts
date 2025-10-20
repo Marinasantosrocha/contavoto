@@ -1,4 +1,4 @@
-import { db, Formulario, Pesquisa } from '../db/localDB';
+import { db, Formulario } from '../db/localDB';
 import { supabase, isOnline } from './supabaseClient';
 
 export class PesquisaService {
@@ -42,6 +42,10 @@ export class PesquisaService {
       throw new Error('Formulário não encontrado');
     }
 
+    // Obter ID do usuário logado
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const usuario_id = user.id;
+
     // Tenta obter geolocalização
     let latitude: number | undefined;
     let longitude: number | undefined;
@@ -69,6 +73,7 @@ export class PesquisaService {
       bairro,
       cidade,
       entrevistador,
+      usuario_id,
       respostas: {},
       iniciadaEm: new Date(),
       status: 'em_andamento',
@@ -77,7 +82,7 @@ export class PesquisaService {
       longitude,
     });
 
-    return id;
+    return Number(id);
   }
 
   static async salvarResposta(pesquisaId: number, campoId: string, valor: any) {
@@ -86,6 +91,24 @@ export class PesquisaService {
       throw new Error('Pesquisa não encontrada');
     }
 
+    // Campos especiais salvos diretamente na estrutura da pesquisa
+    if (campoId === 'aceite_participacao') {
+      await db.pesquisas.update(pesquisaId, {
+        aceite_participacao: valor,
+        sincronizado: false,
+      });
+      return;
+    }
+
+    if (campoId === 'motivo_recusa') {
+      await db.pesquisas.update(pesquisaId, {
+        motivo_recusa: valor,
+        sincronizado: false,
+      });
+      return;
+    }
+
+    // Demais campos são salvos em respostas
     const novasRespostas = {
       ...pesquisa.respostas,
       [campoId]: valor,
@@ -154,12 +177,16 @@ export class PesquisaService {
     return await db.pesquisas.get(id);
   }
 
-  static async contarPesquisas() {
+  static async contarPesquisas(usuario_id?: number) {
+    const filtro = usuario_id 
+      ? (p: any) => !p.deletado && p.usuario_id === usuario_id
+      : (p: any) => !p.deletado;
+
     return {
-      total: await db.pesquisas.filter(p => !p.deletado).count(),
-      emAndamento: await db.pesquisas.filter(p => !p.deletado && p.status === 'em_andamento').count(),
-      finalizadas: await db.pesquisas.filter(p => !p.deletado && p.status === 'finalizada').count(),
-      naoSincronizadas: await db.pesquisas.filter(p => !p.deletado && !p.sincronizado).count(),
+      total: await db.pesquisas.filter(filtro).count(),
+      emAndamento: await db.pesquisas.filter(p => filtro(p) && p.status === 'em_andamento').count(),
+      finalizadas: await db.pesquisas.filter(p => filtro(p) && p.status === 'finalizada').count(),
+      naoSincronizadas: await db.pesquisas.filter(p => filtro(p) && !p.sincronizado).count(),
     };
   }
 
@@ -273,6 +300,8 @@ export class PesquisaService {
               ponto_referencia: pesquisa.pontoReferencia,
               nome_entrevistado: pesquisa.nomeEntrevistado,
               telefone_entrevistado: pesquisa.telefoneEntrevistado,
+              aceite_participacao: pesquisa.aceite_participacao,
+              motivo_recusa: pesquisa.motivo_recusa,
               respostas: pesquisa.respostas,
               latitude: pesquisa.latitude,
               longitude: pesquisa.longitude,
@@ -300,6 +329,8 @@ export class PesquisaService {
               ponto_referencia: pesquisa.pontoReferencia,
               nome_entrevistado: pesquisa.nomeEntrevistado,
               telefone_entrevistado: pesquisa.telefoneEntrevistado,
+              aceite_participacao: pesquisa.aceite_participacao,
+              motivo_recusa: pesquisa.motivo_recusa,
               respostas: pesquisa.respostas,
               latitude: pesquisa.latitude,
               longitude: pesquisa.longitude,

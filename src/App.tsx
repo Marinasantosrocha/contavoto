@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -6,14 +6,14 @@ import { queryClient } from './lib/queryClient';
 import { HomePage } from './pages/HomePage';
 import { PesquisaPage } from './pages/PesquisaPage';
 import { ListaPesquisasPage } from './pages/ListaPesquisasPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { PermissionsPage } from './pages/PermissionsPage';
 import { ConfiguracoesPage } from './pages/ConfiguracoesPage';
-import { useOnlineStatus } from './hooks/useOnlineStatus';
-import { useSincronizar } from './hooks/useSincronizacao';
 import { useInicializarFormulario } from './hooks/useFormularios';
 import { usePWA } from './hooks/usePWA';
+import AutoSync from './components/AutoSync';
 import './App.css';
 import './styles/design-system.css';
 
@@ -24,17 +24,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const isOnline = useOnlineStatus();
-  const sincronizar = useSincronizar();
   const inicializarFormulario = useInicializarFormulario();
   const { showInstallPrompt, installApp, dismissInstallPrompt } = usePWA();
-
-  // Sincroniza automaticamente quando volta online
-  useEffect(() => {
-    if (isOnline && !sincronizar.isPending) {
-      sincronizar.mutate();
-    }
-  }, [isOnline]);
 
   // Inicializa o formulário modelo na primeira execução
   useEffect(() => {
@@ -43,6 +34,9 @@ function AppContent() {
 
   return (
     <Router>
+      {/* Componente de sincronização automática */}
+      <AutoSync />
+      
       <Routes>
         {/* Páginas públicas */}
         <Route path="/login" element={<LoginPage />} />
@@ -62,6 +56,11 @@ function AppContent() {
         <Route path="/pesquisas" element={
           <ProtectedRoute>
             <ListaPesquisasPageWrapper />
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <DashboardPageWrapper />
           </ProtectedRoute>
         } />
             <Route path="/permissions" element={
@@ -113,6 +112,7 @@ function HomePageWrapper() {
     <HomePage
       onIniciarPesquisa={(pesquisaId) => navigate(`/pesquisa/${pesquisaId}`)}
       onVerPesquisas={() => navigate('/pesquisas')}
+      onNavigateToDashboard={() => navigate('/dashboard')}
       onNavigateToSettings={() => navigate('/configuracoes')}
       onNavigateToPermissions={() => navigate('/permissions')}
       onLogout={() => navigate('/login')}
@@ -141,6 +141,16 @@ function ListaPesquisasPageWrapper() {
     <ListaPesquisasPage
       onVoltar={() => navigate('/')}
       onEditarPesquisa={(pesquisaId) => navigate(`/pesquisa/${pesquisaId}`)}
+    />
+  );
+}
+
+function DashboardPageWrapper() {
+  const navigate = useNavigate();
+  return (
+    <DashboardPage
+      onNavigateHome={() => navigate('/')}
+      onNavigatePesquisas={() => navigate('/pesquisas')}
     />
   );
 }

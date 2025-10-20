@@ -9,6 +9,8 @@ export interface User {
   ativo: boolean;
   formularios_permitidos: string[];
   nivel_permissao: number;
+  candidato?: string;
+  foto_url?: string;
 }
 
 export class AuthService {
@@ -59,11 +61,14 @@ export class AuthService {
       tipo_usuario_id: userData.tipo_usuario_id,
       ativo: userData.ativo,
       formularios_permitidos: [],
-      nivel_permissao: tipoData.nivel_permissao
+      nivel_permissao: tipoData.nivel_permissao,
+      candidato: userData.candidato || '',
+      foto_url: userData.foto_url || undefined
     } as User;
 
-    // Salvar no localStorage
+    // Salvar no localStorage (em ambos os formatos para compatibilidade)
     localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('usuario', JSON.stringify(user));
 
     return { user };
   }
@@ -71,6 +76,7 @@ export class AuthService {
   // Fazer logout
   static async logout() {
     localStorage.removeItem('user');
+    localStorage.removeItem('usuario');
   }
 
   // Registrar novo usuário

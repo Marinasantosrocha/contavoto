@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useFormularios, useInicializarFormulario } from '../hooks/useFormularios';
 import { useEstatisticasPesquisas, useCriarPesquisa } from '../hooks/usePesquisas';
-import { useSincronizar } from '../hooks/useSincronizacao';
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
 
 interface HomePageProps {
   onIniciarPesquisa: (formularioId: number) => void;
   onVerPesquisas: () => void;
+  onNavigateToDashboard?: () => void;
   onNavigateToSettings?: () => void;
   onNavigateToPermissions?: () => void;
   onLogout?: () => void;
@@ -17,32 +17,17 @@ interface HomePageProps {
 export const HomePage = ({ 
   onIniciarPesquisa, 
   onVerPesquisas,
+  onNavigateToDashboard,
   onNavigateToSettings,
   onNavigateToPermissions,
   onLogout
 }: HomePageProps) => {
   
-  // React Query hooks
-  const { data: formularios = [], isLoading: loadingFormularios } = useFormularios();
-  const { data: estatisticas } = useEstatisticasPesquisas();
-  const criarPesquisa = useCriarPesquisa();
-  const sincronizar = useSincronizar();
-  const inicializarFormulario = useInicializarFormulario();
-  
-  // Estados locais
-  const [formularioSelecionado, setFormularioSelecionado] = useState<number | null>(null);
-  const [endereco, setEndereco] = useState('');
-  const [numero, setNumero] = useState('');
-  const [semNumero, setSemNumero] = useState(false);
-  const [bairro, setBairro] = useState('');
-  const [cidade, setCidade] = useState('');
-  const [syncStatus, setSyncStatus] = useState('');
-  const [localizacaoCarregando, setLocalizacaoCarregando] = useState(false);
-  const isOnline = useOnlineStatus();
-  
   // Obter dados do usuário logado
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nomeEntrevistador = user.nome || 'Usuário';
+  const usuarioId = user.id;
+  
   // Suporta tanto id numérico quanto nome do tipo de usuário salvo
   const mapTipoToId = (tipo: string | undefined): number | undefined => {
     switch (tipo) {
@@ -59,6 +44,22 @@ export const HomePage = ({
     : mapTipoToId(user.tipo_usuario);
   const isPesquisador = tipoUsuarioId === 1; // ID do pesquisador
   const isSuperAdmin = tipoUsuarioId === 5; // ID do superadmin
+  
+  // React Query hooks - filtrar por usuário se for pesquisador
+  const { data: formularios = [], isLoading: loadingFormularios } = useFormularios();
+  const { data: estatisticas } = useEstatisticasPesquisas(isPesquisador ? usuarioId : undefined);
+  const criarPesquisa = useCriarPesquisa();
+  const inicializarFormulario = useInicializarFormulario();
+  
+  // Estados locais
+  const [formularioSelecionado, setFormularioSelecionado] = useState<number | null>(null);
+  const [endereco, setEndereco] = useState('');
+  const [numero, setNumero] = useState('');
+  const [semNumero, setSemNumero] = useState(false);
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [localizacaoCarregando, setLocalizacaoCarregando] = useState(false);
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     // Carregar localização automaticamente se for pesquisador
@@ -201,17 +202,6 @@ export const HomePage = ({
     }
   };
 
-  const handleSync = async () => {
-    setSyncStatus('🔄 Sincronizando...');
-    try {
-      const result = await sincronizar.mutateAsync();
-      setSyncStatus(result.sucesso ? '✅ Sincronizado!' : '❌ Erro ao sincronizar');
-    } catch (error) {
-      setSyncStatus('❌ Erro ao sincronizar');
-    }
-    setTimeout(() => setSyncStatus(''), 3000);
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('user');
     if (onLogout) onLogout();
@@ -243,11 +233,51 @@ export const HomePage = ({
               <div className={`status-dot ${isOnline ? 'online' : 'offline'}`}></div>
             </div>
             
+            {/* Avatar do Usuário */}
+            <div 
+              className="user-avatar" 
+              onClick={handleGoToSettings}
+              style={{ 
+                cursor: 'pointer',
+                marginLeft: '12px'
+              }}
+            >
+              {user.foto_url ? (
+                <img 
+                  src={user.foto_url} 
+                  alt={nomeEntrevistador}
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid #20B2AA'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: '#20B2AA',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  border: '2px solid #20B2AA'
+                }}>
+                  {nomeEntrevistador.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            
             {/* Menu do Usuário */}
             <div className="user-menu">
               <button className="user-menu-button">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
                 </svg>
               </button>
               <div className="user-menu-dropdown">
@@ -484,42 +514,29 @@ export const HomePage = ({
               </div>
               <div className="list-item-arrow">›</div>
             </div>
-            
-            <div 
-              className="list-item" 
-              onClick={handleSync}
-              style={{ opacity: !isOnline || sincronizar.isPending ? 0.6 : 1 }}
-            >
-              <div className="list-item-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                </svg>
-              </div>
-              <div className="list-item-content">
-                <div className="list-item-title">
-                  {sincronizar.isPending ? 'Sincronizando...' : 'Sincronizar Dados'}
+
+            {onNavigateToDashboard && (
+              <div className="list-item" onClick={onNavigateToDashboard}>
+                <div className="list-item-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                  </svg>
                 </div>
-                <div className="list-item-subtitle">
-                  {isOnline ? 'Enviar dados para o servidor' : 'Conecte-se à internet'}
+                <div className="list-item-content">
+                  <div className="list-item-title">Dashboard de Análise</div>
+                  <div className="list-item-subtitle">Estatísticas e relatórios detalhados</div>
                 </div>
+                <div className="list-item-arrow">›</div>
               </div>
-              <div className="list-item-arrow">›</div>
-            </div>
+            )}
           </div>
         </div>
-
-        {syncStatus && (
-          <div className="text-center mt-4">
-            <div className="status-badge online">{syncStatus}</div>
-          </div>
-        )}
       </main>
 
       {/* Navegação Inferior */}
       <BottomNav 
         onNavigatePesquisas={onVerPesquisas}
-        onNavigateUsuarios={handleGoToPermissions}
-        onNavigateConfig={handleGoToSettings}
+        onNavigateDashboard={onNavigateToDashboard}
       />
     </div>
   );

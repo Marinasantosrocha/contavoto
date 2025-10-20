@@ -13,10 +13,10 @@ export const pesquisaKeys = {
 };
 
 // Hook para buscar estatísticas
-export const useEstatisticasPesquisas = () => {
+export const useEstatisticasPesquisas = (usuario_id?: number) => {
   return useQuery({
-    queryKey: pesquisaKeys.stats(),
-    queryFn: () => PesquisaService.contarPesquisas(),
+    queryKey: [...pesquisaKeys.stats(), usuario_id],
+    queryFn: () => PesquisaService.contarPesquisas(usuario_id),
     refetchInterval: 5000, // Atualiza a cada 5 segundos
   });
 };
@@ -148,5 +148,23 @@ export const useDeletarPesquisa = () => {
   });
 };
 
+// Hook para buscar lista de pesquisadores
+export const usePesquisadores = () => {
+  return useQuery({
+    queryKey: ['pesquisadores'],
+    queryFn: async () => {
+      const { supabase } = await import('../services/supabaseClient');
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nome, email')
+        .eq('tipo_usuario_id', 1) // Apenas pesquisadores
+        .order('nome');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+};
 
 

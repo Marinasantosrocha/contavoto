@@ -1,0 +1,47 @@
+/* ===================================
+   COMPONENTE: RecordingIndicator
+   Indicador de gravação - Bolinha vermelha no canto esquerdo
+   ================================== */
+
+.recording-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px; /* Mudado para direita */
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent; /* Sem fundo */
+  pointer-events: none; /* Não bloqueia cliques */
+}
+
+.recording-dot {
+  width: 16px;
+  height: 16px;
+  background: #DC3545;
+  border-radius: 50%;
+  animation: blink-recording 1s infinite;
+}
+
+/* Animação de piscar simples */
+@keyframes blink-recording {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+  .recording-indicator {
+    top: 15px;
+    right: 15px; /* Direita em mobile também */
+  }
+
+  .recording-dot {
+    width: 14px;
+    height: 14px;
+  }
+}
