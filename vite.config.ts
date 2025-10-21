@@ -12,7 +12,7 @@ export default defineConfig({
             name: 'ContaVoto - Sistema de Pesquisa de Campo',
             short_name: 'ContaVoto',
             description: 'Sistema de pesquisa de campo que funciona offline',
-        theme_color: '#667eea',
+        theme_color: '#20B2AA',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
