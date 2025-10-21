@@ -3,6 +3,7 @@ import { BottomNav } from '../components/BottomNav';
 import AceiteParticipacao from '../components/AceiteParticipacao';
 import CheckboxQuestion from '../components/CheckboxQuestion';
 import RecordingIndicator from '../components/RecordingIndicator';
+import { LoadingScreen } from '../components/LoadingScreen';
 import { usePesquisa } from '../hooks/usePesquisas';
 import { useFormulario } from '../hooks/useFormularios';
 import { useSalvarResposta, useFinalizarPesquisa } from '../hooks/usePesquisas';
@@ -96,11 +97,11 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   }, [isRecording]);
 
   if (loadingPesquisa || loadingFormulario) {
-    return <div className="loading">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   if (!pesquisa || !formulario) {
-    return <div className="loading">Pesquisa não encontrada</div>;
+    return <LoadingScreen message="Pesquisa não encontrada" />;
   }
 
   // Coletar TODAS as perguntas (exceto seções) em uma lista plana

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useEstatisticasPesquisas, usePesquisas, usePesquisadores } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
+import { CustomSelect } from '../components/CustomSelect';
 import '../styles/dashboard.css';
 
 interface DashboardPageProps {
@@ -127,38 +128,30 @@ export const DashboardPage = ({
       <main className="main-content">
         {/* Filtros */}
         <div className="page-section">
-          <div className="form-group">
-            <label htmlFor="periodo-select" className="form-label">Período de Análise</label>
-            <select 
-              id="periodo-select"
-              className="form-select"
-              value={periodoSelecionado}
-              onChange={(e) => setPeriodoSelecionado(e.target.value as Periodo)}
-            >
-              <option value="hoje">Hoje</option>
-              <option value="semana">Últimos 7 dias</option>
-              <option value="mes">Últimos 30 dias</option>
-              <option value="todos">Todos os períodos</option>
-            </select>
-          </div>
+          <CustomSelect
+            label="Período de Análise"
+            options={[
+              { value: 'hoje', label: 'Hoje' },
+              { value: 'semana', label: 'Últimos 7 dias' },
+              { value: 'mes', label: 'Últimos 30 dias' },
+              { value: 'todos', label: 'Todos os períodos' }
+            ]}
+            value={periodoSelecionado}
+            onChange={(value) => setPeriodoSelecionado(value as Periodo)}
+          />
 
           {/* Filtro de Pesquisador (apenas para não-pesquisadores) */}
           {!isPesquisador && (
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label htmlFor="pesquisador-select" className="form-label">Filtrar por Pesquisador</label>
-              <select 
-                id="pesquisador-select"
-                className="form-select"
+            <div style={{ marginTop: '1rem' }}>
+              <CustomSelect
+                label="Filtrar por Pesquisador"
+                options={[
+                  { value: '', label: 'Todos os Pesquisadores' },
+                  ...pesquisadores.map(p => ({ value: p.id, label: p.nome }))
+                ]}
                 value={pesquisadorSelecionado || ''}
-                onChange={(e) => setPesquisadorSelecionado(e.target.value ? Number(e.target.value) : null)}
-              >
-                <option value="">Todos os Pesquisadores</option>
-                {pesquisadores.map(pesquisador => (
-                  <option key={pesquisador.id} value={pesquisador.id}>
-                    {pesquisador.nome}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setPesquisadorSelecionado(value ? Number(value) : null)}
+              />
             </div>
           )}
         </div>

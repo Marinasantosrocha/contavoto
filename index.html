@@ -27,59 +27,33 @@
     
     <!-- Splash Screen CSS -->
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      
       #splash-screen {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        width: 100vw;
+        height: 100vh;
+        background-color: #ffffff;
         display: flex;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
-        z-index: 9999;
-        color: #1e293b;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-      
-      #splash-screen .logo {
-        font-size: 64px;
-        margin-bottom: 24px;
-        animation: float 3s ease-in-out infinite;
-      }
-      
-      #splash-screen .title {
-        font-size: 32px;
-        font-weight: 700;
-        margin-bottom: 12px;
-        text-align: center;
-        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-      
-      #splash-screen .subtitle {
-        font-size: 18px;
-        color: #64748b;
-        text-align: center;
-        margin-bottom: 40px;
-        font-weight: 500;
+        z-index: 999999;
+        overflow: hidden;
       }
       
       #splash-screen .loading {
-        width: 48px;
-        height: 48px;
-        border: 4px solid rgba(59, 130, 246, 0.2);
-        border-top: 4px solid #3b82f6;
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(32, 178, 170, 0.15);
+        border-top: 4px solid #20B2AA;
         border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      
-      @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
+        animation: spin 0.8s linear infinite;
+        box-sizing: border-box;
       }
       
       @keyframes spin {
@@ -89,8 +63,19 @@
       
       .hide-splash {
         opacity: 0;
-        transition: opacity 0.8s ease-out;
+        transition: opacity 0.3s ease-out;
         pointer-events: none;
+      }
+      
+      #root {
+        display: none;
+      }
+      
+      body.loaded #root {
+        display: block;
+      }
+      
+      body.loaded #splash-screen {
         display: none !important;
       }
     </style>
@@ -98,9 +83,6 @@
   <body>
     <!-- Splash Screen -->
     <div id="splash-screen">
-          <div class="logo">🗳️</div>
-          <div class="title">ContaVoto</div>
-          <div class="subtitle">Sistema de Pesquisa de Campo</div>
       <div class="loading"></div>
     </div>
     
@@ -110,12 +92,15 @@
       // Hide splash screen when app loads
       window.addEventListener('load', () => {
         setTimeout(() => {
+          document.body.classList.add('loaded');
           const splash = document.getElementById('splash-screen');
-          splash.classList.add('hide-splash');
-          setTimeout(() => {
-            splash.style.display = 'none';
-          }, 500);
-        }, 1500); // Show splash for 1.5 seconds
+          if (splash) {
+            splash.classList.add('hide-splash');
+            setTimeout(() => {
+              splash.remove();
+            }, 300);
+          }
+        }, 500);
       });
     </script>
     

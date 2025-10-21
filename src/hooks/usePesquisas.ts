@@ -156,8 +156,9 @@ export const usePesquisadores = () => {
       const { supabase } = await import('../services/supabaseClient');
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nome, email')
-        .eq('tipo_usuario_id', 1) // Apenas pesquisadores
+        .select('id, nome')
+        .eq('tipo_usuario_id', 1) // Tipo 1 = Pesquisador
+        .eq('ativo', true) // Apenas usuários ativos
         .order('nome');
       
       if (error) throw error;
