@@ -133,6 +133,14 @@ export class PesquisaService {
       sincronizado: false,
     });
 
+    // Enfileira job de mídia (caso exista áudio salvo antes do finish)
+    try {
+      const { enqueueAudioJob } = await import('./mediaQueue');
+      await enqueueAudioJob(pesquisaId);
+    } catch (e) {
+      console.warn('Fila de mídia não disponível:', e);
+    }
+
     if (isOnline()) {
       await this.sincronizar();
     }
@@ -290,64 +298,189 @@ export class PesquisaService {
           }
         } else if (pesquisa.uuid) {
           // Atualizar
+          const updateData: any = {
+            endereco: pesquisa.endereco,
+            bairro: pesquisa.bairro,
+            cidade: pesquisa.cidade,
+            numero_residencia: pesquisa.numeroResidencia,
+            ponto_referencia: pesquisa.pontoReferencia,
+            nome_entrevistado: pesquisa.nomeEntrevistado,
+            telefone_entrevistado: pesquisa.telefoneEntrevistado,
+            aceite_participacao: pesquisa.aceite_participacao,
+            motivo_recusa: pesquisa.motivo_recusa,
+            respostas: pesquisa.respostas,
+            latitude: pesquisa.latitude,
+            longitude: pesquisa.longitude,
+            entrevistador: pesquisa.entrevistador,
+            finalizada_em: pesquisa.finalizadaEm?.toISOString(),
+            status: pesquisa.status,
+          };
+
+          // Adicionar campos de áudio (para UPDATE de pesquisas que já têm UUID)
+          if (pesquisa.audio_duracao) {
+            updateData.audio_duracao = pesquisa.audio_duracao;
+          }
+          if (pesquisa.transcricao_completa) {
+            updateData.transcricao_completa = pesquisa.transcricao_completa;
+          }
+          if (pesquisa.processamento_ia_status) {
+            updateData.processamento_ia_status = pesquisa.processamento_ia_status;
+          }
+          
+          // Upload do áudio para UPDATE
+          if (pesquisa.audioBlob && pesquisa.uuid) {
+            try {
+              const timestamp = new Date().getTime();
+              const fileName = `audio_${pesquisa.uuid}_${timestamp}.webm`;
+              
+              console.log(`📤 Fazendo upload do áudio (UPDATE): ${fileName}`);
+              
+              const { error: uploadError } = await supabase
+                .storage
+                .from('audio-pesquisa')
+                .upload(fileName, pesquisa.audioBlob, {
+                  contentType: 'audio/webm',
+                  cacheControl: '3600',
+                  upsert: false
+                });
+
+              if (!uploadError) {
+                const { data: urlData } = supabase
+                  .storage
+                  .from('audio-pesquisa')
+                  .getPublicUrl(fileName);
+                
+                updateData.audio_url = urlData.publicUrl;
+                console.log(`✅ Áudio enviado: ${urlData.publicUrl}`);
+              }
+            } catch (audioError) {
+              console.error('❌ Erro no upload do áudio:', audioError);
+            }
+          }
+
           const { error } = await supabase
             .from('pesquisas')
-            .update({
-              endereco: pesquisa.endereco,
-              bairro: pesquisa.bairro,
-              cidade: pesquisa.cidade,
-              numero_residencia: pesquisa.numeroResidencia,
-              ponto_referencia: pesquisa.pontoReferencia,
-              nome_entrevistado: pesquisa.nomeEntrevistado,
-              telefone_entrevistado: pesquisa.telefoneEntrevistado,
-              aceite_participacao: pesquisa.aceite_participacao,
-              motivo_recusa: pesquisa.motivo_recusa,
-              respostas: pesquisa.respostas,
-              latitude: pesquisa.latitude,
-              longitude: pesquisa.longitude,
-              entrevistador: pesquisa.entrevistador,
-              finalizada_em: pesquisa.finalizadaEm?.toISOString(),
-              status: pesquisa.status,
-            })
+            .update(updateData)
             .eq('id', pesquisa.uuid);
 
           if (!error) {
             await db.pesquisas.update(pesquisa.id!, { sincronizado: true });
             console.log(`✅ Pesquisa ${pesquisa.id} atualizada`);
+            try {
+              const { processMediaQueueOnce } = await import('./mediaQueue');
+              await processMediaQueueOnce();
+            } catch {}
           }
         } else {
           // Inserir
+          const insertData: any = {
+            formulario_id: pesquisa.formularioUuid,
+            formulario_nome: pesquisa.formularioNome,
+            endereco: pesquisa.endereco,
+            bairro: pesquisa.bairro,
+            cidade: pesquisa.cidade,
+            numero_residencia: pesquisa.numeroResidencia,
+            ponto_referencia: pesquisa.pontoReferencia,
+            nome_entrevistado: pesquisa.nomeEntrevistado,
+            telefone_entrevistado: pesquisa.telefoneEntrevistado,
+            aceite_participacao: pesquisa.aceite_participacao,
+            motivo_recusa: pesquisa.motivo_recusa,
+            respostas: pesquisa.respostas,
+            latitude: pesquisa.latitude,
+            longitude: pesquisa.longitude,
+            entrevistador: pesquisa.entrevistador,
+            iniciada_em: pesquisa.iniciadaEm.toISOString(),
+            finalizada_em: pesquisa.finalizadaEm?.toISOString(),
+            status: pesquisa.status,
+          };
+
+          // Adicionar campos de áudio (duração e transcrição apenas)
+          // O audio_url será adicionado DEPOIS do INSERT
+          if (pesquisa.audio_duracao) {
+            insertData.audio_duracao = pesquisa.audio_duracao;
+          }
+          if (pesquisa.transcricao_completa) {
+            insertData.transcricao_completa = pesquisa.transcricao_completa;
+          }
+          if (pesquisa.processamento_ia_status) {
+            insertData.processamento_ia_status = pesquisa.processamento_ia_status;
+          }
+
           const { data, error } = await supabase
             .from('pesquisas')
-            .insert({
-              formulario_id: pesquisa.formularioUuid,
-              formulario_nome: pesquisa.formularioNome,
-              endereco: pesquisa.endereco,
-              bairro: pesquisa.bairro,
-              cidade: pesquisa.cidade,
-              numero_residencia: pesquisa.numeroResidencia,
-              ponto_referencia: pesquisa.pontoReferencia,
-              nome_entrevistado: pesquisa.nomeEntrevistado,
-              telefone_entrevistado: pesquisa.telefoneEntrevistado,
-              aceite_participacao: pesquisa.aceite_participacao,
-              motivo_recusa: pesquisa.motivo_recusa,
-              respostas: pesquisa.respostas,
-              latitude: pesquisa.latitude,
-              longitude: pesquisa.longitude,
-              entrevistador: pesquisa.entrevistador,
-              iniciada_em: pesquisa.iniciadaEm.toISOString(),
-              finalizada_em: pesquisa.finalizadaEm?.toISOString(),
-              status: pesquisa.status,
-            })
+            .insert(insertData)
             .select()
             .single();
 
           if (!error && data) {
+            // Atualizar UUID localmente
             await db.pesquisas.update(pesquisa.id!, {
               uuid: data.id,
-              sincronizado: true,
             });
+            
             console.log(`✅ Pesquisa ${pesquisa.id} inserida com UUID ${data.id}`);
+            // Atualiza job de mídia com uuid e processa uma vez
+            try {
+              const { mediaJobs } = db;
+              const job = await mediaJobs.where({ pesquisaId: pesquisa.id! }).first();
+              if (job && !job.uuid) {
+                await mediaJobs.update(job.id!, { uuid: data.id, status: 'pendente', proximaTentativa: Date.now() });
+              }
+              const { processMediaQueueOnce } = await import('./mediaQueue');
+              await processMediaQueueOnce();
+            } catch {}
+            
+            // 🎙️ AGORA fazer upload do áudio (já temos o UUID)
+            if (pesquisa.audioBlob) {
+              try {
+                const timestamp = new Date().getTime();
+                const fileName = `audio_${data.id}_${timestamp}.webm`;
+                
+                console.log(`📤 Fazendo upload do áudio: ${fileName}`);
+                
+                const { error: uploadError } = await supabase
+                  .storage
+                  .from('audio-pesquisa')
+                  .upload(fileName, pesquisa.audioBlob, {
+                    contentType: 'audio/webm',
+                    cacheControl: '3600',
+                    upsert: false
+                  });
+
+                if (uploadError) {
+                  console.error('❌ Erro ao fazer upload do áudio:', uploadError);
+                } else {
+                  // Gerar URL pública
+                  const { data: urlData } = supabase
+                    .storage
+                    .from('audio-pesquisa')
+                    .getPublicUrl(fileName);
+                  
+                  const audioUrl = urlData.publicUrl;
+                  console.log(`✅ Áudio enviado: ${audioUrl}`);
+                  
+                  // Atualizar pesquisa com audio_url
+                  const { error: updateError } = await supabase
+                    .from('pesquisas')
+                    .update({
+                      audio_url: audioUrl,
+                      audio_duracao: pesquisa.audio_duracao,
+                      transcricao_completa: pesquisa.transcricao_completa,
+                      processamento_ia_status: pesquisa.processamento_ia_status
+                    })
+                    .eq('id', data.id);
+                  
+                  if (!updateError) {
+                    console.log(`✅ Áudio URL atualizado na pesquisa ${data.id}`);
+                  }
+                }
+              } catch (audioError) {
+                console.error('❌ Erro no processo de upload:', audioError);
+              }
+            }
+            
+            // Marcar como sincronizado de dados (o job cuidará do áudio)
+            await db.pesquisas.update(pesquisa.id!, { sincronizado: true });
           }
         }
       } catch (error) {
@@ -367,10 +500,19 @@ export class PesquisaService {
   static async inicializarFormularioModelo() {
     const count = await db.formularios.count();
     if (count === 0) {
-      // Importa o formulário modelo
-      const { formularioPortaAPortaModelo } = await import('../data/formularioModelo');
+      // Importa AMBOS os formulários
+      const { 
+        formularioPortaAPortaModelo,
+        formularioPortaAPortaCompleto 
+      } = await import('../data/formularioModelo');
+      
+      // Adicionar formulário de teste (4 perguntas)
       await this.salvarFormulario(formularioPortaAPortaModelo);
-      console.log('✅ Formulário modelo criado');
+      console.log('✅ Formulário de teste criado (4 perguntas)');
+      
+      // Adicionar formulário completo
+      await this.salvarFormulario(formularioPortaAPortaCompleto);
+      console.log('✅ Formulário completo criado');
     }
   }
 }

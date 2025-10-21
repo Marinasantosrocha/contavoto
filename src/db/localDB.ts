@@ -87,17 +87,39 @@ export interface Pesquisa {
   deletado?: boolean;
 }
 
+// Job de mídia (fila de upload offline-first)
+export interface MediaJob {
+  id?: number;
+  pesquisaId: number;        // ID local da pesquisa
+  uuid?: string;             // UUID remoto da pesquisa (quando existir)
+  tipo: 'audio';             // por enquanto só áudio
+  status: 'pendente' | 'enviando' | 'ok' | 'erro';
+  tentativas: number;
+  proximaTentativa?: number; // epoch millis
+  ultimoErro?: string;
+  criadoEm: number;          // epoch millis
+}
+
 // Classe do banco de dados local usando Dexie (wrapper do IndexedDB)
 export class LocalDatabase extends Dexie {
   formularios!: Table<Formulario>;
   pesquisas!: Table<Pesquisa>;
+  mediaJobs!: Table<MediaJob>;
 
   constructor() {
     super('PortaAPortaDB');
-    
+
+    // v1: formularios, pesquisas
     this.version(1).stores({
       formularios: '++id, uuid, sincronizado',
       pesquisas: '++id, uuid, formularioId, status, sincronizado, deletado'
+    });
+
+    // v2: adicionar mediaJobs (fila de upload)
+    this.version(2).stores({
+      formularios: '++id, uuid, sincronizado',
+      pesquisas: '++id, uuid, formularioId, status, sincronizado, deletado',
+      mediaJobs: '++id, pesquisaId, uuid, status, tipo, tentativas, criadoEm'
     });
   }
 }

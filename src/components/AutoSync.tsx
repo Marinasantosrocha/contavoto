@@ -28,6 +28,12 @@ export default function AutoSync() {
 
     const checkAndSync = async () => {
       try {
+        // Processa rapidamente a fila de mídia antes do sync
+        try {
+          const { processMediaQueueOnce } = await import('../services/mediaQueue');
+          await processMediaQueueOnce();
+        } catch {}
+
         // Verifica se há pesquisas não sincronizadas
         const pesquisas = await db.pesquisas
           .filter((p) => !p.sincronizado)
@@ -76,6 +82,10 @@ export default function AutoSync() {
 
         // Finaliza sincronização
         await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          const { processMediaQueueOnce } = await import('../services/mediaQueue');
+          await processMediaQueueOnce();
+        } catch {}
         setSyncStatus({
           isSync: false,
           total: 0,

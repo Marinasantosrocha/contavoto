@@ -1,8 +1,42 @@
 import { Formulario, CampoFormulario } from '../db/localDB';
 
-// Formulário modelo baseado no documento fornecido
+// ⚠️ VERSÃO DE TESTE - APENAS 4 PERGUNTAS
 export const formularioPortaAPortaModelo: Omit<Formulario, 'id' | 'criadoEm' | 'sincronizado'> = {
-  nome: "Pesquisa Porta a Porta - Modelo Padrão",
+  nome: "Pesquisa Teste Rápido",
+  descricao: "Formulário simplificado para testes de áudio",
+  preCandidato: "Candidato Teste",
+  telefoneContato: "(00) 00000-0000",
+  campos: [
+    {
+      id: 'nome_morador',
+      tipo: 'texto',
+      label: '1. Qual é o seu nome?',
+      obrigatorio: true,
+    },
+    {
+      id: 'telefone_morador',
+      tipo: 'telefone',
+      label: '2. Telefone (opcional)',
+      obrigatorio: false,
+    },
+    {
+      id: 'problema_bairro',
+      tipo: 'textarea',
+      label: '3. Qual o principal problema do seu bairro?',
+      obrigatorio: true,
+    },
+    {
+      id: 'sugestao',
+      tipo: 'textarea',
+      label: '4. O que você sugere para melhorar?',
+      obrigatorio: false,
+    },
+  ],
+};
+
+// Formulário completo (comentado para testes)
+export const formularioPortaAPortaCompleto: Omit<Formulario, 'id' | 'criadoEm' | 'sincronizado'> = {
+  nome: "Pesquisa Porta a Porta - Modelo Completo",
   descricao: "Formulário completo de pesquisa porta a porta com perguntas sobre educação, saúde, infraestrutura e transporte",
   preCandidato: "[NOME DO CANDIDATO]",
   telefoneContato: "[XX XXXXX-XXXX]",

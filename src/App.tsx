@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { PermissionsPage } from './pages/PermissionsPage';
 import { ConfiguracoesPage } from './pages/ConfiguracoesPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { useInicializarFormulario } from './hooks/useFormularios';
 import { usePWA } from './hooks/usePWA';
 import AutoSync from './components/AutoSync';
@@ -71,6 +72,11 @@ function AppContent() {
             <Route path="/configuracoes" element={
               <ProtectedRoute>
                 <ConfiguracoesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <SettingsPageWrapper />
               </ProtectedRoute>
             } />
         
@@ -151,6 +157,16 @@ function DashboardPageWrapper() {
     <DashboardPage
       onNavigateHome={() => navigate('/')}
       onNavigatePesquisas={() => navigate('/pesquisas')}
+    />
+  );
+}
+
+function SettingsPageWrapper() {
+  const navigate = useNavigate();
+  return (
+    <SettingsPage
+      onNavigateToHome={() => navigate('/')}
+      onNavigateToDashboard={() => navigate('/dashboard')}
     />
   );
 }

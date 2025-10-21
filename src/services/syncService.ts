@@ -17,9 +17,9 @@ async function uploadAudioParaStorage(
     const fileName = `pesquisa_${pesquisaUuid}_${timestamp}.webm`;
     const filePath = `${fileName}`;
 
-    // Upload para o bucket pesquisas-audio
+    // Upload para o bucket audio-pesquisa
     const { error } = await supabase.storage
-      .from('pesquisas-audio')
+      .from('audio-pesquisa')
       .upload(filePath, audioBlob, {
         contentType: 'audio/webm',
         upsert: false
@@ -32,7 +32,7 @@ async function uploadAudioParaStorage(
 
     // Obtém URL pública
     const { data: urlData } = supabase.storage
-      .from('pesquisas-audio')
+      .from('audio-pesquisa')
       .getPublicUrl(filePath);
 
     return urlData.publicUrl;

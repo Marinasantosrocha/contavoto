@@ -16,15 +16,28 @@ export const LoginPage: React.FC = () => {
         setError('');
         setIsLoading(true);
 
+        // Verificar se está online
+        if (!navigator.onLine) {
+          setError('❌ Sem conexão. O login requer internet na primeira vez. Se já estiver logado, o app funciona offline.');
+          setIsLoading(false);
+          return;
+        }
+
         try {
           // Login com telefone e senha
-          const result = await AuthService.login(telefone, password);
+          await AuthService.login(telefone, password);
           
           // Usuário já é salvo no localStorage pelo AuthService
           navigate('/');
         } catch (error: any) {
           console.error('Erro no login:', error);
-          setError(error.message || 'Erro ao fazer login. Verifique suas credenciais.');
+          
+          // Verificar se perdeu conexão durante o login
+          if (!navigator.onLine) {
+            setError('❌ Conexão perdida durante o login. Tente novamente quando estiver online.');
+          } else {
+            setError(error.message || 'Erro ao fazer login. Verifique suas credenciais.');
+          }
         } finally {
           setIsLoading(false);
         }

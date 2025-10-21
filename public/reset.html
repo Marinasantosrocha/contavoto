@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpar Formulários</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #20B2AA;
+      margin-bottom: 10px;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    button {
+      background: #20B2AA;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px 5px;
+      width: 100%;
+    }
+    button:hover {
+      background: #1a9d96;
+    }
+    button.danger {
+      background: #dc3545;
+    }
+    button.danger:hover {
+      background: #c82333;
+    }
+    #log {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+    }
+    .success { color: #28a745; }
+    .error { color: #dc3545; }
+    .info { color: #17a2b8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 Limpar Formulários Duplicados</h1>
+    <p>Esta ferramenta vai remover os formulários antigos e criar os novos.</p>
+    
+    <div class="warning">
+      <strong>⚠️ Atenção:</strong>
+      <ul>
+        <li>Isso vai deletar todo o banco de dados local</li>
+        <li>Você precisará fazer login novamente</li>
+        <li>Pesquisas não sincronizadas serão perdidas</li>
+      </ul>
+    </div>
+
+    <h3>✅ Novos formulários que serão criados:</h3>
+    <ol>
+      <li><strong>Pesquisa Teste Rápido</strong> - 4 perguntas simples</li>
+      <li><strong>Pesquisa Porta a Porta - Modelo Completo</strong> - Formulário completo</li>
+    </ol>
+    
+    <button onclick="limparFormularios()">🗑️ Limpar e Recriar Formulários</button>
+    <button onclick="voltarApp()" class="danger">🔙 Cancelar e Voltar</button>
+    
+    <div id="log"></div>
+  </div>
+
+  <script>
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      logDiv.style.display = 'block';
+      const span = document.createElement('span');
+      span.className = type;
+      span.textContent = message + '\n';
+      logDiv.appendChild(span);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    async function limparFormularios() {
+      try {
+        log('🔄 Iniciando limpeza...', 'info');
+        
+        // 1. Desregistrar Service Worker primeiro
+        if ('serviceWorker' in navigator) {
+          log('🔄 Desregistrando Service Worker...', 'info');
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let registration of registrations) {
+            await registration.unregister();
+          }
+          log('✅ Service Worker desregistrado', 'success');
+        }
+        
+        // 2. Limpar localStorage
+        log('🔄 Limpando localStorage...', 'info');
+        localStorage.clear();
+        sessionStorage.clear();
+        log('✅ localStorage limpo', 'success');
+        
+        // 3. Deletar o banco IndexedDB
+        log('🔄 Deletando banco de dados...', 'info');
+        const deleteRequest = indexedDB.deleteDatabase('contavoto-db');
+        
+        deleteRequest.onsuccess = function() {
+          log('✅ Banco deletado com sucesso!', 'success');
+          log('✅ Novos formulários serão criados ao recarregar', 'success');
+          log('🔄 Redirecionando em 2 segundos...', 'info');
+          
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        };
+        
+        deleteRequest.onerror = function(event) {
+          log('❌ Erro ao deletar banco: ' + event.target.error, 'error');
+          log('Tentando forçar redirecionamento...', 'info');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        };
+        
+        deleteRequest.onblocked = function() {
+          log('⚠️ Operação bloqueada!', 'error');
+          log('Feche todas as outras abas do app.', 'error');
+          log('Tentando forçar mesmo assim...', 'info');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
+        };
+        
+      } catch (error) {
+        log('❌ Erro: ' + error.message, 'error');
+        log('Tentando forçar redirecionamento...', 'info');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      }
+    }
+
+    function voltarApp() {
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>
