@@ -1,11 +1,106 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// Chamadas REST diretas à API do Gemini (evita diferenças de versão do SDK)
 import { CampoFormulario } from '../db/localDB';
 
-// Inicializa o Gemini com a chave da API
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY as string);
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
+const API_BASE = 'https://generativelanguage.googleapis.com/v1';
 
-// Usa o modelo Gemini 1.5 Flash (rápido e barato)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+// Candidatos de modelos compatíveis (ordem de preferência)
+const MODEL_CANDIDATES = [
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-8b',
+  'gemini-1.5-flash-002',
+  'gemini-1.5-flash-latest',
+  'gemini-1.0-pro',
+  'gemini-1.0-pro-latest',
+] as const;
+
+async function generateContentWithFallback(prompt: string) {
+  let lastErr: unknown = null;
+  // 1) Tenta modelos descobertos dinamicamente para esta chave
+  const dynamic = await getDynamicModelCandidates();
+  const candidates = [...dynamic, ...MODEL_CANDIDATES];
+
+  for (const id of candidates) {
+    try {
+      const texto = await generateViaREST(id, prompt);
+      return texto;
+    } catch (e: any) {
+      lastErr = e;
+      const msg = typeof e?.message === 'string' ? e.message : '';
+      // Tenta o próximo modelo apenas para erros de modelo/rota não suportados
+      if (msg.includes('404') || msg.includes('not found') || msg.includes('is not supported')) {
+        continue;
+      }
+      // Para outros erros (ex.: 401/403), não adianta trocar de modelo
+      throw e;
+    }
+  }
+  throw lastErr ?? new Error('Nenhum modelo Gemini disponível no momento');
+}
+
+// Obtém modelos pela API e ordena por preferência (flash > pro; preferir 1.5 / 2.x)
+async function getDynamicModelCandidates(): Promise<string[]> {
+  try {
+    const names = await listarModelos(); // ex.: ["models/gemini-1.5-flash", ...]
+    const ids = names
+      .map((n) => (typeof n === 'string' ? n.split('/').pop() || n : n))
+      .filter(Boolean) as string[];
+
+    // Regras simples de preferência
+    const scored = ids.map((id) => ({ id, score: scoreModelId(id) }));
+    scored.sort((a, b) => b.score - a.score);
+    // Remove duplicados mantendo ordem
+    const unique: string[] = [];
+    for (const { id } of scored) {
+      if (!unique.includes(id)) unique.push(id);
+    }
+    return unique;
+  } catch {
+    return [];
+  }
+}
+
+function scoreModelId(id: string): number {
+  const s = id.toLowerCase();
+  let score = 0;
+  if (s.includes('flash')) score += 50; // preferir flash para custo/latência
+  if (s.includes('pro')) score += 30;
+  if (/(^|[-])1\.5($|[-])/i.test(s)) score += 15;
+  if (/(^|[-])2(\.|$)/i.test(s)) score += 10; // modelos 2.x
+  if (s.endsWith('latest')) score += 5;
+  return score;
+}
+
+async function generateViaREST(model: string, prompt: string): Promise<string> {
+  if (!API_KEY) {
+    throw new Error('VITE_GEMINI_API_KEY ausente. Defina a chave no .env');
+  }
+  const url = `${API_BASE}/models/${encodeURIComponent(model)}:generateContent`;
+  const body = {
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: prompt }]
+      }
+    ]
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': API_KEY,
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Gemini HTTP ${res.status}: ${text}`);
+  }
+  const data = await res.json();
+  const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!texto) throw new Error('Resposta do Gemini sem texto');
+  return texto as string;
+}
 
 /**
  * Resultado da análise da IA
@@ -34,10 +129,8 @@ export async function processarTranscricaoComIA(
     // Monta o prompt para o Gemini
     const prompt = montarPrompt(transcricao, campos, candidato);
 
-    // Chama a API do Gemini
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const texto = response.text();
+  // Chama a API do Gemini (com fallback de modelos)
+  const texto = await generateContentWithFallback(prompt);
 
     // Parse da resposta JSON
     const dados = extrairJSON(texto);
@@ -235,12 +328,30 @@ function encontrarOpcaoSimilar(valor: string, opcoes: string[]): string | null {
  */
 export async function testarConexaoGemini(): Promise<boolean> {
   try {
-    const result = await model.generateContent('Responda apenas: OK');
-    const response = await result.response;
-    const texto = response.text();
+    const texto = await generateContentWithFallback('Responda apenas: OK');
     return texto.includes('OK');
   } catch (error) {
     console.error('Erro ao testar Gemini:', error);
     return false;
   }
+}
+
+/**
+ * Lista os modelos disponíveis para a chave atual (nome completo vindo da API)
+ */
+export async function listarModelos(): Promise<string[]> {
+  if (!API_KEY) throw new Error('VITE_GEMINI_API_KEY ausente');
+  const url = `${API_BASE}/models`;
+  const res = await fetch(url, {
+    headers: {
+      'x-goog-api-key': API_KEY,
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ListModels HTTP ${res.status}: ${text}`);
+  }
+  const data = await res.json();
+  const names = (data?.models || []).map((m: any) => m.name as string);
+  return names;
 }

@@ -4,6 +4,7 @@ import { useFormularios, useInicializarFormulario } from '../hooks/useFormulario
 import { useEstatisticasPesquisas, useCriarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
+import { testarConexaoGemini, listarModelos } from '../services/geminiService';
 
 interface HomePageProps {
   onIniciarPesquisa: (formularioId: number) => void;
@@ -60,6 +61,12 @@ export const HomePage = ({
   const [cidade, setCidade] = useState('');
   const [localizacaoCarregando, setLocalizacaoCarregando] = useState(false);
   const isOnline = useOnlineStatus();
+  // Estado do teste Gemini
+  const [geminiTestando, setGeminiTestando] = useState(false);
+  const [geminiOk, setGeminiOk] = useState<boolean | null>(null);
+  const [geminiLatenciaMs, setGeminiLatenciaMs] = useState<number | null>(null);
+  const [modelos, setModelos] = useState<string[] | null>(null);
+  const [listandoModelos, setListandoModelos] = useState(false);
 
   useEffect(() => {
     // Carregar localização automaticamente se for pesquisador
@@ -78,50 +85,19 @@ export const HomePage = ({
             
             // Tentar múltiplas APIs de geocodificação
             try {
-              // Primeira tentativa: Nominatim (OpenStreetMap) - mais detalhado
-              const nominatimResponse = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR,pt,en`
-              );
-              const nominatimData = await nominatimResponse.json();
-              
-              if (nominatimData.address) {
-                const addr = nominatimData.address;
-                
-                // Separar rua e número
-                const numeroCasa = addr.house_number || '';
-                const rua = addr.road || addr.street || addr.pedestrian || '';
-                
-                setEndereco(rua || 'Endereço não encontrado');
-                setNumero(numeroCasa);
-                
-                // Log para debug - verificar se consegue detectar número
-                if (numeroCasa) {
-                  console.log('Número detectado automaticamente:', numeroCasa);
-                } else {
-                  console.log('Número não detectado - usuário deve preencher manualmente');
-                }
-                setBairro(addr.suburb || addr.neighbourhood || addr.quarter || addr.village || 'Bairro não encontrado');
-                setCidade(addr.city || addr.town || addr.municipality || addr.county || 'Cidade não encontrada');
-              } else {
-                throw new Error('Dados de endereço não encontrados');
-              }
-            } catch (nominatimError) {
-              console.log('Nominatim falhou, tentando BigDataCloud...');
-              
-              // Segunda tentativa: BigDataCloud
+              // Primeira tentativa: BigDataCloud (evita CORS do Nominatim)
               const bdcResponse = await fetch(
                 `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt-BR`
               );
               const bdcData = await bdcResponse.json();
-              
-              if (bdcData) {
+
+              if (bdcData && (bdcData.streetName || bdcData.city || bdcData.locality)) {
                 const numeroCasa = bdcData.streetNumber || '';
                 const rua = bdcData.streetName || bdcData.locality || '';
-                
+
                 setEndereco(rua || 'Endereço não encontrado');
                 setNumero(numeroCasa);
-                
-                // Log para debug - verificar se consegue detectar número
+
                 if (numeroCasa) {
                   console.log('Número detectado automaticamente:', numeroCasa);
                 } else {
@@ -130,7 +106,35 @@ export const HomePage = ({
                 setBairro(bdcData.principalSubdivision || bdcData.district || bdcData.localityInfo?.administrative?.[1]?.name || 'Bairro não encontrado');
                 setCidade(bdcData.city || bdcData.locality || bdcData.localityInfo?.administrative?.[2]?.name || 'Cidade não encontrada');
               } else {
-                throw new Error('Nenhuma API retornou dados válidos');
+                throw new Error('BigDataCloud sem dados úteis');
+              }
+            } catch (bdcError) {
+              console.log('BigDataCloud falhou, tentando Nominatim...');
+
+              // Segunda tentativa: Nominatim (pode falhar por CORS; usado apenas como fallback)
+              try {
+                const nominatimResponse = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR,pt,en`
+                );
+                const nominatimData = await nominatimResponse.json();
+
+                if (nominatimData.address) {
+                  const addr = nominatimData.address;
+                  const numeroCasa = addr.house_number || '';
+                  const rua = addr.road || addr.street || addr.pedestrian || '';
+
+                  setEndereco(rua || 'Endereço não encontrado');
+                  setNumero(numeroCasa);
+                  if (numeroCasa) {
+                    console.log('Número detectado automaticamente (Nominatim):', numeroCasa);
+                  }
+                  setBairro(addr.suburb || addr.neighbourhood || addr.quarter || addr.village || 'Bairro não encontrado');
+                  setCidade(addr.city || addr.town || addr.municipality || addr.county || 'Cidade não encontrada');
+                } else {
+                  throw new Error('Nominatim sem dados úteis');
+                }
+              } catch (nominatimError) {
+                console.warn('Não foi possível obter endereço automaticamente. Preencha manualmente.');
               }
             }
           },
@@ -178,6 +182,20 @@ export const HomePage = ({
     }
   };
 
+  const handleListarModelos = async () => {
+    setListandoModelos(true);
+    setModelos(null);
+    try {
+      const nomes = await listarModelos();
+      setModelos(nomes);
+    } catch (e) {
+      console.error('Falha ao listar modelos:', e);
+      setModelos([`Erro: ${e instanceof Error ? e.message : String(e)}`]);
+    } finally {
+      setListandoModelos(false);
+    }
+  };
+
   const handleIniciar = async () => {
     if (!formularioSelecionado || !endereco || !bairro || !cidade) {
       alert('Aguarde a localização ser carregada ou preencha os campos manualmente!');
@@ -217,6 +235,26 @@ export const HomePage = ({
 
   const handleInicializarFormulario = () => {
     inicializarFormulario.mutate();
+  };
+
+  const handleTestarGemini = async () => {
+    setGeminiTestando(true);
+    setGeminiOk(null);
+    setGeminiLatenciaMs(null);
+    const inicio = Date.now();
+    try {
+      const ok = await testarConexaoGemini();
+      const fim = Date.now();
+      setGeminiLatenciaMs(fim - inicio);
+      setGeminiOk(ok);
+    } catch (e) {
+      const fim = Date.now();
+      setGeminiLatenciaMs(fim - inicio);
+      setGeminiOk(false);
+      console.error('Falha no teste do Gemini:', e);
+    } finally {
+      setGeminiTestando(false);
+    }
   };
 
   return (
@@ -527,6 +565,57 @@ export const HomePage = ({
                   <div className="list-item-subtitle">Estatísticas e relatórios detalhados</div>
                 </div>
                 <div className="list-item-arrow">›</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Teste rápido do Gemini (IA) */}
+        <div className="page-section">
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">⚙️ Teste do Gemini (IA)</h2>
+              <p className="card-subtitle">Verifique se a chave VITE_GEMINI_API_KEY está ativa e a API responde</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={handleTestarGemini}
+                disabled={geminiTestando}
+              >
+                {geminiTestando ? '⏳ Testando…' : '▶️ Testar conexão'}
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={handleListarModelos}
+                disabled={listandoModelos}
+              >
+                {listandoModelos ? '⏳ Listando modelos…' : '📜 Listar modelos'}
+              </button>
+              {geminiOk === true && (
+                <span style={{ color: '#198754', fontWeight: 600 }}>
+                  ✅ Conectado {geminiLatenciaMs != null ? `(${geminiLatenciaMs} ms)` : ''}
+                </span>
+              )}
+              {geminiOk === false && (
+                <span style={{ color: '#dc3545', fontWeight: 600 }}>
+                  ❌ Falhou {geminiLatenciaMs != null ? `(${geminiLatenciaMs} ms)` : ''}
+                </span>
+              )}
+              {geminiOk === null && !geminiTestando && (
+                <span style={{ color: '#6c757d' }}>Sem teste realizado ainda</span>
+              )}
+            </div>
+            {modelos && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ fontSize: '0.9rem', color: '#6c757d', marginBottom: '6px' }}>
+                  Modelos retornados pela API para sua chave:
+                </div>
+                <ul style={{ maxHeight: 160, overflow: 'auto', paddingLeft: 16 }}>
+                  {modelos.map((m, i) => (
+                    <li key={i} style={{ fontFamily: 'monospace' }}>{m}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

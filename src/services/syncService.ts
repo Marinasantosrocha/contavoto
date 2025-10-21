@@ -57,11 +57,7 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
       return false;
     }
 
-    // Verifica se tem áudio
-    if (!pesquisa.audioBlob) {
-      console.log('Pesquisa sem áudio - pulando processamento');
-      return false;
-    }
+    // Áudio é opcional para a IA (pode rodar só com a transcrição)
 
     // Verifica se já foi processado
     if (pesquisa.processamento_ia_status === 'concluido') {
@@ -70,8 +66,10 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
     }
 
     // 2. Atualiza status para "processando"
+    let processamentoStatus: 'pendente' | 'processando' | 'concluido' | 'erro' = 'processando';
+    let processamentoConfianca: any = null;
     await db.pesquisas.update(pesquisaId, {
-      processamento_ia_status: 'processando'
+      processamento_ia_status: processamentoStatus
     });
 
     // 3. Upload do áudio
@@ -94,7 +92,7 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
     }
 
     // 4. Processa com IA (se tiver transcrição)
-    let resultadoIA: ResultadoIA | null = null;
+  let resultadoIA: ResultadoIA | null = null;
 
     if (pesquisa.transcricao_completa) {
       console.log('🧠 Processando com Gemini...');
@@ -108,9 +106,11 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
       console.log('✅ IA processada:', resultadoIA.status);
 
       // 5. Salva resultados da IA
+      processamentoStatus = resultadoIA.status === 'sucesso' ? 'concluido' : 'erro';
+      processamentoConfianca = resultadoIA.confianca;
       await db.pesquisas.update(pesquisaId, {
-        processamento_ia_status: resultadoIA.status === 'sucesso' ? 'concluido' : 'erro',
-        processamento_ia_confianca: resultadoIA.confianca
+        processamento_ia_status: processamentoStatus,
+        processamento_ia_confianca: processamentoConfianca
       });
 
       // 6. Mescla respostas da IA com respostas existentes
@@ -155,8 +155,8 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
       audio_url: audioUrl,
       audio_duracao: pesquisa.audio_duracao,
       transcricao_completa: pesquisa.transcricao_completa,
-      processamento_ia_status: pesquisa.processamento_ia_status,
-      processamento_ia_confianca: pesquisa.processamento_ia_confianca,
+      processamento_ia_status: processamentoStatus || pesquisa.processamento_ia_status,
+      processamento_ia_confianca: processamentoConfianca || pesquisa.processamento_ia_confianca,
       perguntas_feitas: pesquisa.perguntas_feitas,
       respostas: pesquisa.respostas,
       latitude: pesquisa.latitude,
@@ -204,11 +204,11 @@ export async function processarPesquisasPendentes(): Promise<void> {
   try {
     console.log('🔍 Buscando pesquisas pendentes...');
 
-    // Busca pesquisas finalizadas e não sincronizadas
+    // Busca pesquisas finalizadas que ainda precisam de IA
+    // Critérios: status finalizada E (transcrição existente) E (IA não concluída)
+    // Não dependemos de 'sincronizado' para garantir que a IA rode mesmo após um sync anterior
     const pesquisasPendentes = await db.pesquisas
-      .where('status')
-      .equals('finalizada')
-      .and(p => !p.sincronizado && p.audioBlob != null)
+      .filter(p => p.status === 'finalizada' && !!p.transcricao_completa && p.processamento_ia_status !== 'concluido')
       .toArray();
 
     console.log(`📊 Encontradas ${pesquisasPendentes.length} pesquisas para processar`);
@@ -235,12 +235,6 @@ export async function processarPesquisasPendentes(): Promise<void> {
 export async function verificarEProcessarAutomaticamente(): Promise<void> {
   if (!navigator.onLine) {
     console.log('⚠️ Offline - processamento adiado');
-    return;
-  }
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.log('⚠️ Usuário não autenticado - processamento adiado');
     return;
   }
 
