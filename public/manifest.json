@@ -2,11 +2,15 @@
   "name": "ContaVoto - Sistema de Pesquisa de Campo",
   "short_name": "ContaVoto",
   "description": "Sistema de pesquisa de campo porta a porta que funciona offline",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#20B2AA",
   "orientation": "any",
+  "prefer_related_applications": false,
+  "scope": "/",
   "icons": [
     {
       "src": "/logoconta.png",
