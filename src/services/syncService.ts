@@ -129,15 +129,19 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
     // 7. Sincroniza com Supabase
     console.log('🔄 Sincronizando com Supabase...');
     
-    const { data: { user } } = await supabase.auth.getUser();
+    // Obtém usuário do localStorage (o app não usa supabase.auth)
+    const userLS = localStorage.getItem('user') || localStorage.getItem('usuario');
+    const user = userLS ? JSON.parse(userLS) : null;
     if (!user) {
-      console.error('Usuário não autenticado');
-      return false;
+      console.log('⚠️ Usuário não encontrado no localStorage; prosseguindo sem usuario_id');
     }
 
     // Prepara dados para sincronização
     const dadosSync: any = {
-      usuario_id: user.id,
+      // Se já existir UUID remoto, inclui como id para fazer UPDATE/UPSERT correto
+      ...(pesquisa.uuid ? { id: pesquisa.uuid } : {}),
+      usuario_id: user?.id || null,
+      formulario_id: pesquisa.formularioUuid,
       formulario_nome: pesquisa.formularioNome,
       endereco: pesquisa.endereco,
       bairro: pesquisa.bairro,
@@ -158,14 +162,14 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
       latitude: pesquisa.latitude,
       longitude: pesquisa.longitude,
       status: pesquisa.status,
-      finalizada_em: pesquisa.finalizadaEm
+      finalizada_em: pesquisa.finalizadaEm ? new Date(pesquisa.finalizadaEm).toISOString() : null
     };
 
     // Insere ou atualiza no Supabase
     const { error } = await supabase
       .from('pesquisas')
       .upsert(dadosSync, {
-        onConflict: 'uuid'
+        onConflict: 'id'
       });
 
     if (error) {

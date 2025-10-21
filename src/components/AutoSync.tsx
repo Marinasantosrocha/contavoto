@@ -86,6 +86,13 @@ export default function AutoSync() {
           const { processMediaQueueOnce } = await import('../services/mediaQueue');
           await processMediaQueueOnce();
         } catch {}
+        // Dispara processamento de IA após sincronização e fila de mídia
+        try {
+          const { verificarEProcessarAutomaticamente } = await import('../services/syncService');
+          await verificarEProcessarAutomaticamente();
+        } catch (e) {
+          console.error('Erro ao acionar processamento de IA:', e);
+        }
         setSyncStatus({
           isSync: false,
           total: 0,
