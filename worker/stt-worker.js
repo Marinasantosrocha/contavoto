@@ -1,4 +1,6 @@
-import 'dotenv/config';
+// Carrega .env com prioridade sobre variáveis já existentes (override)
+import dotenv from 'dotenv';
+dotenv.config({ override: true });
 import { supabaseAdmin } from './supabaseAdminClient.js';
 import OpenAI from 'openai';
 import os from 'os';
@@ -11,7 +13,9 @@ const geminiApiKey = process.env.GEMINI_API_KEY;
 const STT_PROVIDER = process.env.STT_PROVIDER || 'openai';
 const BATCH_SIZE = parseInt(process.env.STT_BATCH_SIZE || '3', 10);
 const LOOP_DELAY_MS = parseInt(process.env.STT_LOOP_DELAY_MS || '10000', 10);
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+// Não usamos override por variável de ambiente para o modelo.
+// O worker resolve automaticamente o melhor modelo disponível (2.5 > 2.0 > 1.5).
+let GEMINI_MODEL = null; // será resolvido dinamicamente
 
 const client = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
@@ -128,9 +132,44 @@ FORMATO (JSON):
 Retorne apenas o JSON.`;
 }
 
-async function geminiGenerateJSON(prompt) {
+async function listGeminiModels() {
+  if (!geminiApiKey) return [];
+  const url = `https://generativelanguage.googleapis.com/v1/models`;
+  const res = await fetch(url, { headers: { 'x-goog-api-key': geminiApiKey } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data?.models || []).map((m) => m.name).filter(Boolean);
+}
+
+function scoreModelId(id) {
+  const s = String(id).toLowerCase();
+  let score = 0;
+  if (s.includes('flash')) score += 50;
+  if (s.includes('pro')) score += 30;
+  if (/(^|[-])2\.5(\.|$)/.test(s)) score += 40; // preferir 2.5
+  else if (/(^|[-])2(\.|$)/.test(s)) score += 30; // demais 2.x
+  else if (/(^|[-])1\.5($|[-])/.test(s)) score += 10;
+  if (s.endsWith('latest')) score += 5;
+  return score;
+}
+
+async function resolveGeminiModel() {
+  if (!geminiApiKey) return null;
+  try {
+    const names = await listGeminiModels(); // ex.: ["models/gemini-2.5-flash", ...]
+    const ids = names.map((n) => (typeof n === 'string' ? n.split('/').pop() || n : n));
+    ids.sort((a, b) => scoreModelId(b) - scoreModelId(a));
+    const best = ids[0];
+    if (best) return best;
+  } catch {}
+  // fallback estático
+  return 'gemini-2.5-flash';
+}
+
+async function geminiGenerateJSON(prompt, model) {
   if (!geminiApiKey) throw new Error('GEMINI_API_KEY ausente');
-  const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
+  const mdl = model || GEMINI_MODEL || 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(mdl)}:generateContent`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -165,7 +204,23 @@ async function processarIASeHabilitado(pesquisaId, transcricao) {
   const campos = formulario?.campos || [];
   const candidato = formulario?.pre_candidato;
   const prompt = montarPrompt(transcricao, campos, candidato);
-  const resultado = await geminiGenerateJSON(prompt);
+  let resultado;
+  try {
+    const model = GEMINI_MODEL || await resolveGeminiModel();
+    GEMINI_MODEL = model;
+    resultado = await geminiGenerateJSON(prompt, model);
+  } catch (e) {
+    const msg = String(e?.message || e);
+    // Se modelo não encontrado (404), tenta resolver dinamicamente e refazer
+    if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
+      const resolved = await resolveGeminiModel();
+      console.warn('Modelo Gemini não encontrado. Trocando para:', resolved);
+      GEMINI_MODEL = resolved;
+      resultado = await geminiGenerateJSON(prompt, resolved);
+    } else {
+      throw e;
+    }
+  }
   const respostasIA = resultado?.respostas || {};
   const confianca = resultado?.confianca || {};
   const observacoes = resultado?.observacoes || null;
@@ -231,6 +286,11 @@ async function mainLoop() {
   if (STT_PROVIDER === 'openai' && !openaiApiKey) {
     console.error('OPENAI_API_KEY não definido. Saindo.');
     process.exit(1);
+  }
+  // Resolver modelo Gemini uma vez no início (se houver chave)
+  if (geminiApiKey) {
+    GEMINI_MODEL = await resolveGeminiModel();
+    console.log('Gemini habilitado. Modelo selecionado:', GEMINI_MODEL, '| modo: auto');
   }
   while (true) {
     try {
