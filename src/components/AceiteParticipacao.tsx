@@ -9,6 +9,7 @@ interface AceiteParticipacaoProps {
 }
 
 const MOTIVOS_RECUSA = [
+  'Ausente',
   'Sem tempo',
   'Não gosta de pesquisas',
   'Não mora aqui',
@@ -100,6 +101,13 @@ export default function AceiteParticipacao({
           onClick={handleNao}
         >
           Não
+        </button>
+
+        <button
+          className="aceite-btn ausente"
+          onClick={() => onRecusa('Ausente')}
+        >
+          Ausente
         </button>
       </div>
     </div>

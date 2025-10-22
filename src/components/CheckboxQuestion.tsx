@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CampoFormulario } from '../db/localDB';
 import './CheckboxQuestion.css';
 
@@ -23,6 +23,12 @@ export default function CheckboxQuestion({
   preCandidato
 }: CheckboxQuestionProps) {
   const [perguntei, setPerguntei] = useState(false);
+  
+  // Sempre que a pergunta mudar, resetar o estado do checkbox
+  // Garante que a próxima pergunta não venha marcada
+  useEffect(() => {
+    setPerguntei(false);
+  }, [campo.id, numeroPergunta]);
 
   const handleCheckboxChange = (checked: boolean) => {
     setPerguntei(checked);

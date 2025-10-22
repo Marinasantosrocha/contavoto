@@ -3,7 +3,7 @@
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { NetworkFirst, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 
 // Precaching - cache dos arquivos estáticos
 precacheAndRoute(self.__WB_MANIFEST);
@@ -42,6 +42,14 @@ registerRoute(
     request.destination === 'script',
   new StaleWhileRevalidate({
     cacheName: 'static-resources-cache',
+  })
+);
+
+// Cache para vídeos (ex.: vídeo de encerramento)
+registerRoute(
+  ({ request }) => request.destination === 'video',
+  new CacheFirst({
+    cacheName: 'video-cache',
   })
 );
 
