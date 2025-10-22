@@ -36,7 +36,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   // Estados para gravação contínua
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [transcriptionText, setTranscriptionText] = useState('');
+  const [, setTranscriptionText] = useState('');
   
   // Estados para navegação de perguntas (uma por vez)
   const [perguntaAtualIndex, setPerguntaAtualIndex] = useState(0);
@@ -120,21 +120,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const totalPerguntas = todasPerguntas.length;
   const progresso = totalPerguntas > 0 ? ((perguntaAtualIndex + 1) / totalPerguntas) * 100 : 0;
 
-  const handleResposta = async (campoId: string, valor: any) => {
-    const novasRespostas = {
-      ...respostas,
-      [campoId]: valor,
-    };
-
-    setRespostas(novasRespostas);
-
-    // Salva no banco local via React Query
-    salvarResposta.mutate({
-      pesquisaId,
-      campoId,
-      valor,
-    });
-  };
+  // Removido handleResposta não utilizado (evita erro de noUnusedLocals)
 
   const handleAceitarParticipacao = async () => {
     setAceitouParticipar(true);

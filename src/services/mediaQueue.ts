@@ -97,10 +97,27 @@ async function processJob(job: MediaJob) {
 
   // Atualiza pesquisa remota e local com audio_url
   if (uuid) {
+    const updatePayload: any = {
+      audio_url: audioUrl,
+      audio_duracao: pesquisa.audio_duracao,
+      transcricao_completa: pesquisa.transcricao_completa,
+      // Sempre marca pendente quando um novo áudio é enviado (reprocessa se necessário)
+      stt_status: 'pendente',
+    };
     await supabase
       .from('pesquisas')
-      .update({ audio_url: audioUrl, audio_duracao: pesquisa.audio_duracao, transcricao_completa: pesquisa.transcricao_completa })
+      .update(updatePayload)
       .eq('id', uuid);
+
+    // Enfileira job de transcrição se não houver transcrição local
+    if (!pesquisa.transcricao_completa) {
+      try {
+        const { enqueueTranscriptionJob } = await import('./transcriptionJobService');
+        await enqueueTranscriptionJob(uuid, audioUrl);
+      } catch (e) {
+        console.warn('Não foi possível enfileirar job de transcrição (mediaQueue):', e);
+      }
+    }
   }
 
   await db.pesquisas.update(job.pesquisaId, { audio_url: audioUrl, sincronizado: true });

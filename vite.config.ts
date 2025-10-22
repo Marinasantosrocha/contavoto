@@ -63,7 +63,7 @@ export default defineConfig({
   ],
   server: {
     port: 3004,
-    strictPort: true, // Falha se a porta 3004 estiver ocupada (não tenta outra)
+    strictPort: false, // Permite fallback automático se a porta 3004 estiver ocupada
     open: true,
   },
 });

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../services/supabaseClient';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { useFormularios, useInicializarFormulario } from '../hooks/useFormularios';
+import { useFormularios } from '../hooks/useFormularios';
 import { useEstatisticasPesquisas, useCriarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
@@ -50,7 +52,6 @@ export const HomePage = ({
   const { data: formularios = [], isLoading: loadingFormularios } = useFormularios();
   const { data: estatisticas } = useEstatisticasPesquisas(isPesquisador ? usuarioId : undefined);
   const criarPesquisa = useCriarPesquisa();
-  const inicializarFormulario = useInicializarFormulario();
   
   // Estados locais
   const [formularioSelecionado, setFormularioSelecionado] = useState<number | null>(null);
@@ -67,6 +68,9 @@ export const HomePage = ({
   const [geminiLatenciaMs, setGeminiLatenciaMs] = useState<number | null>(null);
   const [modelos, setModelos] = useState<string[] | null>(null);
   const [listandoModelos, setListandoModelos] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [pendenciasCount, setPendenciasCount] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Carregar localização automaticamente se for pesquisador
@@ -74,6 +78,29 @@ export const HomePage = ({
       carregarLocalizacao();
     }
   }, [isPesquisador]);
+
+  // Carrega contador de transcrições pendentes para superadmin
+  useEffect(() => {
+    let cancel = false;
+    async function carregarPendencias() {
+      if (!isSuperAdmin) return;
+      try {
+        // Conta direto na fila de transcrição: pendente + processando
+        const { count, error } = await supabase
+          .from('transcription_jobs')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['pendente', 'processando']);
+        if (!cancel) {
+          setPendenciasCount(error ? null : (count ?? 0));
+        }
+      } catch {
+        if (!cancel) setPendenciasCount(null);
+      }
+    }
+    carregarPendencias();
+    const id = setInterval(carregarPendencias, 15000);
+    return () => { cancel = true; clearInterval(id); };
+  }, [isSuperAdmin]);
 
   const carregarLocalizacao = async () => {
     setLocalizacaoCarregando(true);
@@ -233,9 +260,35 @@ export const HomePage = ({
     if (onNavigateToSettings) onNavigateToSettings();
   };
 
-  const handleInicializarFormulario = () => {
-    inicializarFormulario.mutate();
-  };
+  async function executarSincronizacao() {
+    if (!navigator.onLine) {
+      alert('Você está offline. Conecte-se à internet para sincronizar.');
+      return;
+    }
+    setSyncing(true);
+    try {
+      try {
+        const { processMediaQueueOnce } = await import('../services/mediaQueue');
+        await processMediaQueueOnce();
+      } catch {}
+      const { PesquisaService } = await import('../services/pesquisaService');
+      await PesquisaService.sincronizar();
+      // IA apenas para superadmin
+      if (isSuperAdmin) {
+        try {
+          const { verificarEProcessarAutomaticamente } = await import('../services/syncService');
+          await verificarEProcessarAutomaticamente();
+        } catch {}
+      }
+      alert('Sincronização executada.');
+    } catch (e: any) {
+      alert('Erro na sincronização: ' + (e?.message || String(e)));
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  // Removido: criação de formulário modelo local (usar Supabase)
 
   const handleTestarGemini = async () => {
     setGeminiTestando(true);
@@ -399,15 +452,8 @@ export const HomePage = ({
                 </select>
                 {formularios.length === 0 && (
                   <div style={{ marginTop: '1rem' }}>
-                    <button
-                      onClick={handleInicializarFormulario}
-                      className="btn btn-secondary btn-small"
-                      disabled={inicializarFormulario.isPending}
-                    >
-                      {inicializarFormulario.isPending ? '⏳ Inicializando...' : '📋 Criar Formulário Modelo'}
-                    </button>
-                    <small style={{ display: 'block', marginTop: '0.5rem', color: '#6c757d' }}>
-                      Nenhum formulário encontrado. Clique para criar o formulário modelo com 38 perguntas.
+                    <small style={{ display: 'block', color: '#dc3545' }}>
+                      Nenhum formulário encontrado. Conecte-se à internet para baixar do Supabase.
                     </small>
                   </div>
                 )}
@@ -529,9 +575,17 @@ export const HomePage = ({
                   {tipoUsuarioId === 2 && 'Candidato - Visualização de dados'}
                 </p>
               </div>
-              <div className="text-center">
-                <p>Você não tem permissão para criar pesquisas.</p>
-                <p>Use o menu abaixo para navegar pelas funcionalidades disponíveis.</p>
+              <div className="text-center" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+                <button className="btn" onClick={executarSincronizacao} disabled={syncing || !navigator.onLine}>
+                  {syncing ? 'Sincronizando...' : 'Sincronizar agora'}
+                </button>
+                <p className="muted" style={{ margin: 0 }}>Processa uploads pendentes e atualiza dados.</p>
+                {isSuperAdmin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="badge">Pendências de transcrição: {pendenciasCount ?? '—'}</span>
+                    <button className="btn btn-ghost" onClick={() => navigate('/transcricoes')}>Abrir fila</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

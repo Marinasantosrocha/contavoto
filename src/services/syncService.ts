@@ -130,17 +130,13 @@ export async function processarPesquisaComIA(pesquisaId: number): Promise<boolea
     console.log('🔄 Sincronizando com Supabase...');
     
     // Obtém usuário do localStorage (o app não usa supabase.auth)
-    const userLS = localStorage.getItem('user') || localStorage.getItem('usuario');
-    const user = userLS ? JSON.parse(userLS) : null;
-    if (!user) {
-      console.log('⚠️ Usuário não encontrado no localStorage; prosseguindo sem usuario_id');
-    }
+    // Observação: não enviamos mais usuario_id para a tabela pesquisas,
+    // pois o schema atual não tem essa coluna.
 
     // Prepara dados para sincronização
     const dadosSync: any = {
       // Se já existir UUID remoto, inclui como id para fazer UPDATE/UPSERT correto
-      ...(pesquisa.uuid ? { id: pesquisa.uuid } : {}),
-      usuario_id: user?.id || null,
+  ...(pesquisa.uuid ? { id: pesquisa.uuid } : {}),
       formulario_id: pesquisa.formularioUuid,
       formulario_nome: pesquisa.formularioNome,
       endereco: pesquisa.endereco,
