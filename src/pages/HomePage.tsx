@@ -73,6 +73,25 @@ export const HomePage = ({
   const [pendenciasCount, setPendenciasCount] = useState<number | null>(null);
   const navigate = useNavigate();
 
+  // Fallback offline: reutiliza último endereço geocodificado com sucesso
+  const salvarEnderecoLocal = (dados: { endereco: string; numero?: string; bairro: string; cidade: string }) => {
+    const payload = {
+      ...dados,
+      timestamp: Date.now(),
+    };
+    try { localStorage.setItem('lastKnownAddress', JSON.stringify(payload)); } catch {}
+  };
+
+  const carregarEnderecoLocal = (): { endereco: string; numero?: string; bairro: string; cidade: string } | null => {
+    try {
+      const raw = localStorage.getItem('lastKnownAddress');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Carregar localização automaticamente se for pesquisador
     if (isPesquisador) {
@@ -113,6 +132,17 @@ export const HomePage = ({
             
             // Tentar múltiplas APIs de geocodificação
             try {
+              if (!navigator.onLine) {
+                // Offline: não geocodificar; tenta usar endereço salvo
+                const salvo = carregarEnderecoLocal();
+                if (salvo) {
+                  setEndereco(salvo.endereco);
+                  setNumero(salvo.numero || '');
+                  setBairro(salvo.bairro);
+                  setCidade(salvo.cidade);
+                }
+                return;
+              }
               // Primeira tentativa: BigDataCloud (evita CORS do Nominatim)
               const bdcResponse = await fetch(
                 `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt-BR`
@@ -131,8 +161,12 @@ export const HomePage = ({
                 } else {
                   console.log('Número não detectado - usuário deve preencher manualmente');
                 }
-                setBairro(bdcData.principalSubdivision || bdcData.district || bdcData.localityInfo?.administrative?.[1]?.name || 'Bairro não encontrado');
-                setCidade(bdcData.city || bdcData.locality || bdcData.localityInfo?.administrative?.[2]?.name || 'Cidade não encontrada');
+                const bairroLocal = bdcData.principalSubdivision || bdcData.district || bdcData.localityInfo?.administrative?.[1]?.name || 'Bairro não encontrado';
+                const cidadeLocal = bdcData.city || bdcData.locality || bdcData.localityInfo?.administrative?.[2]?.name || 'Cidade não encontrada';
+                setBairro(bairroLocal);
+                setCidade(cidadeLocal);
+                // Persistir para uso offline
+                salvarEnderecoLocal({ endereco: rua || 'Endereço não encontrado', numero: numeroCasa, bairro: bairroLocal, cidade: cidadeLocal });
               } else {
                 throw new Error('BigDataCloud sem dados úteis');
               }
@@ -141,6 +175,16 @@ export const HomePage = ({
 
               // Segunda tentativa: Nominatim (pode falhar por CORS; usado apenas como fallback)
               try {
+                if (!navigator.onLine) {
+                  const salvo = carregarEnderecoLocal();
+                  if (salvo) {
+                    setEndereco(salvo.endereco);
+                    setNumero(salvo.numero || '');
+                    setBairro(salvo.bairro);
+                    setCidade(salvo.cidade);
+                  }
+                  return;
+                }
                 const nominatimResponse = await fetch(
                   `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR,pt,en`
                 );
@@ -156,13 +200,25 @@ export const HomePage = ({
                   if (numeroCasa) {
                     console.log('Número detectado automaticamente (Nominatim):', numeroCasa);
                   }
-                  setBairro(addr.suburb || addr.neighbourhood || addr.quarter || addr.village || 'Bairro não encontrado');
-                  setCidade(addr.city || addr.town || addr.municipality || addr.county || 'Cidade não encontrada');
+                  const bairroLocal = addr.suburb || addr.neighbourhood || addr.quarter || addr.village || 'Bairro não encontrado';
+                  const cidadeLocal = addr.city || addr.town || addr.municipality || addr.county || 'Cidade não encontrada';
+                  setBairro(bairroLocal);
+                  setCidade(cidadeLocal);
+                  // Persistir para uso offline
+                  salvarEnderecoLocal({ endereco: rua || 'Endereço não encontrado', numero: numeroCasa, bairro: bairroLocal, cidade: cidadeLocal });
                 } else {
                   throw new Error('Nominatim sem dados úteis');
                 }
               } catch (nominatimError) {
                 console.warn('Não foi possível obter endereço automaticamente. Preencha manualmente.');
+                // Tentar último endereço salvo como fallback
+                const salvo = carregarEnderecoLocal();
+                if (salvo) {
+                  setEndereco(salvo.endereco);
+                  setNumero(salvo.numero || '');
+                  setBairro(salvo.bairro);
+                  setCidade(salvo.cidade);
+                }
               }
             }
           },
@@ -186,6 +242,14 @@ export const HomePage = ({
             setBairro(errorMessage);
             setEndereco(errorMessage);
             setNumero('');
+            // Fallback para último endereço salvo
+            const salvo = carregarEnderecoLocal();
+            if (salvo) {
+              setEndereco(salvo.endereco);
+              setNumero(salvo.numero || '');
+              setBairro(salvo.bairro);
+              setCidade(salvo.cidade);
+            }
           },
           {
             enableHighAccuracy: true,
@@ -205,6 +269,14 @@ export const HomePage = ({
       setBairro('Erro ao carregar localização');
       setEndereco('Erro ao carregar localização');
       setNumero('');
+      // Fallback para último endereço salvo
+      const salvo = carregarEnderecoLocal();
+      if (salvo) {
+        setEndereco(salvo.endereco);
+        setNumero(salvo.numero || '');
+        setBairro(salvo.bairro);
+        setCidade(salvo.cidade);
+      }
     } finally {
       setLocalizacaoCarregando(false);
     }
