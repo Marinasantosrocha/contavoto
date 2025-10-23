@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logoconta.png', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.ico', 'logoconta.png', 'apple-touch-icon.png', 'agradecimento.mp4'],
           manifest: {
             name: 'ContaVoto - Sistema de Pesquisa de Campo',
             short_name: 'ContaVoto',
@@ -44,7 +44,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp4,webm,ogg}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
@@ -56,6 +56,17 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60 * 24 * 365
               }
             }
+          },
+          {
+            urlPattern: ({ request }) => request.destination === 'video',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'video-cache',
+              expiration: {
+                maxEntries: 5,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              }
+            }
           }
         ]
       }
@@ -63,7 +74,7 @@ export default defineConfig({
   ],
   server: {
     port: 3004,
-    strictPort: true, // Falha se a porta 3004 estiver ocupada (não tenta outra)
+    strictPort: false, // Permite fallback automático se a porta 3004 estiver ocupada
     open: true,
   },
 });

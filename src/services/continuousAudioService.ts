@@ -115,12 +115,16 @@ export class ContinuousAudioService {
       this.mediaRecorder.start(1000); // Salva chunks a cada 1 segundo
       this.isRecording = true;
 
-      // Inicia transcrição
+      // Inicia transcrição SOMENTE quando online
       if (this.recognition) {
-        try {
-          this.recognition.start();
-        } catch (e) {
-          console.log('Transcrição já ativa');
+        if (navigator.onLine) {
+          try {
+            this.recognition.start();
+          } catch (e) {
+            console.log('Transcrição já ativa');
+          }
+        } else {
+          console.log('Offline: transcrição em tempo real desabilitada. Apenas gravando áudio.');
         }
       }
 

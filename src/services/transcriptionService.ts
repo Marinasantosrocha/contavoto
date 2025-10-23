@@ -1,3 +1,5 @@
+import { useState, useRef, useCallback } from 'react';
+
 // API de transcrição usando Web Speech API como fallback
 export class TranscriptionService {
   private recognition: any = null;
@@ -100,7 +102,7 @@ export class TranscriptionService {
   }
 
   // Transcrição de arquivo de áudio - redireciona para transcrição em tempo real
-  async transcribeAudioFile(audioBlob: Blob): Promise<string> {
+  async transcribeAudioFile(_audioBlob: Blob): Promise<string> {
     // A Web Speech API não funciona bem com arquivos reproduzidos
     // Redirecionar para transcrição em tempo real
     throw new Error('Use transcrição em tempo real para melhor precisão');

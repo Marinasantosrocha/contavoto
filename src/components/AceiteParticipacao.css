@@ -52,19 +52,37 @@
 }
 
 /* Botão NÃO (cinza) */
+/* Botão NÃO (vermelho) */
 .aceite-btn.nao {
+  background-color: rgba(220, 53, 69, 0.12); /* #DC3545 */
+  color: #DC3545;
+  border: 2px solid rgba(220, 53, 69, 0.35);
+}
+
+.aceite-btn.nao:hover:not(:disabled) {
+  background-color: rgba(220, 53, 69, 0.22);
+  border-color: #DC3545;
+  transform: translateY(-2px);
+}
+
+.aceite-btn.nao:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Botão AUSENTE (cinza) */
+.aceite-btn.ausente {
   background-color: #F8F9FA;
   color: #6C757D;
   border: 2px solid #E9ECEF;
 }
 
-.aceite-btn.nao:hover:not(:disabled) {
+.aceite-btn.ausente:hover:not(:disabled) {
   background-color: #E9ECEF;
   border-color: #6C757D;
   transform: translateY(-2px);
 }
 
-.aceite-btn.nao:active:not(:disabled) {
+.aceite-btn.ausente:active:not(:disabled) {
   transform: translateY(0);
 }
 

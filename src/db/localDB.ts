@@ -105,6 +105,7 @@ export class LocalDatabase extends Dexie {
   formularios!: Table<Formulario>;
   pesquisas!: Table<Pesquisa>;
   mediaJobs!: Table<MediaJob>;
+  kv!: Table<{ key: string; value: any }>;
 
   constructor() {
     super('PortaAPortaDB');
@@ -120,6 +121,14 @@ export class LocalDatabase extends Dexie {
       formularios: '++id, uuid, sincronizado',
       pesquisas: '++id, uuid, formularioId, status, sincronizado, deletado',
       mediaJobs: '++id, pesquisaId, uuid, status, tipo, tentativas, criadoEm'
+    });
+
+    // v3: key-value store para metadados (ex: timestamps de sync)
+    this.version(3).stores({
+      formularios: '++id, uuid, sincronizado',
+      pesquisas: '++id, uuid, formularioId, status, sincronizado, deletado',
+      mediaJobs: '++id, pesquisaId, uuid, status, tipo, tentativas, criadoEm',
+      kv: 'key'
     });
   }
 }

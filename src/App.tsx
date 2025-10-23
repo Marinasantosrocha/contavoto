@@ -12,11 +12,14 @@ import { RegisterPage } from './pages/RegisterPage';
 import { PermissionsPage } from './pages/PermissionsPage';
 import { ConfiguracoesPage } from './pages/ConfiguracoesPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { useInicializarFormulario } from './hooks/useFormularios';
+import { TranscricoesPage } from './pages/TranscricoesPage';
+// import { useInicializarFormulario } from './hooks/useFormularios'; // Deprecado: formulários só via Supabase
 import { usePWA } from './hooks/usePWA';
 import AutoSync from './components/AutoSync';
 import './App.css';
 import './styles/design-system.css';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { PesquisaService } from './services/pesquisaService';
 
 // Componente para verificar autenticação
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -25,13 +28,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const inicializarFormulario = useInicializarFormulario();
+  // const inicializarFormulario = useInicializarFormulario();
   const { showInstallPrompt, installApp, dismissInstallPrompt } = usePWA();
+  const online = useOnlineStatus();
 
   // Inicializa o formulário modelo na primeira execução
   useEffect(() => {
-    inicializarFormulario.mutate();
+    // Removido: não cria mais formulários localmente
   }, []);
+
+  // Assina realtime de formularios quando online para manter cache sempre atualizado
+  useEffect(() => {
+    if (online) {
+      PesquisaService.initFormulariosRealtime();
+    } else {
+      PesquisaService.stopFormulariosRealtime();
+    }
+    return () => {
+      PesquisaService.stopFormulariosRealtime();
+    };
+  }, [online]);
 
   return (
     <Router>
@@ -62,6 +78,12 @@ function AppContent() {
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <DashboardPageWrapper />
+          </ProtectedRoute>
+        } />
+        {/* Rota restrita ao super admin (tipo 5) */}
+        <Route path="/transcricoes" element={
+          <ProtectedRoute>
+            <TranscricoesPageWrapper />
           </ProtectedRoute>
         } />
             <Route path="/permissions" element={
@@ -168,6 +190,20 @@ function SettingsPageWrapper() {
       onNavigateToHome={() => navigate('/')}
       onNavigateToDashboard={() => navigate('/dashboard')}
     />
+  );
+}
+
+function TranscricoesPageWrapper() {
+  const navigate = useNavigate();
+  // Gate por perfil (super admin = tipo 5)
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const tipoId = user?.tipo_usuario_id;
+  if (tipoId !== 5) {
+    return <Navigate to="/" />;
+  }
+  return (
+    <TranscricoesPage onVoltar={() => navigate('/')} />
   );
 }
 
