@@ -34,6 +34,12 @@ export default function AutoSync() {
           await processMediaQueueOnce();
         } catch {}
 
+        // Garante enfileiramento de transcrições mesmo que não haja dados locais para sincronizar
+        try {
+          const { ensureJobsForPendingTranscriptions } = await import('../services/transcriptionJobService');
+          await ensureJobsForPendingTranscriptions();
+        } catch {}
+
         // Verifica se há pesquisas não sincronizadas
         const pesquisas = await db.pesquisas
           .filter((p) => !p.sincronizado)
@@ -86,12 +92,37 @@ export default function AutoSync() {
           const { processMediaQueueOnce } = await import('../services/mediaQueue');
           await processMediaQueueOnce();
         } catch {}
-        // Dispara processamento de IA após sincronização e fila de mídia
+        // Garante que todas as pesquisas com áudio e sem transcrição tenham job na fila
         try {
-          const { verificarEProcessarAutomaticamente } = await import('../services/syncService');
-          await verificarEProcessarAutomaticamente();
+          const { ensureJobsForPendingTranscriptions } = await import('../services/transcriptionJobService');
+          await ensureJobsForPendingTranscriptions();
         } catch (e) {
-          console.error('Erro ao acionar processamento de IA:', e);
+          console.warn('Não foi possível garantir enfileiramento de transcrições:', e);
+        }
+        // Dispara processamento de IA somente para superadmin
+        try {
+          const userStr = localStorage.getItem('user') || localStorage.getItem('usuario');
+          const user = userStr ? JSON.parse(userStr) : null;
+          const mapTipoToId = (tipo: string | undefined): number | undefined => {
+            switch (tipo) {
+              case 'pesquisador': return 1;
+              case 'candidato': return 2;
+              case 'suporte': return 3;
+              case 'admin': return 4;
+              case 'superadmin': return 5;
+              default: return undefined;
+            }
+          };
+          const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number'
+            ? user.tipo_usuario_id
+            : mapTipoToId(user?.tipo_usuario);
+          const isSuperAdmin = tipoUsuarioId === 5;
+          if (isSuperAdmin) {
+            const { verificarEProcessarAutomaticamente } = await import('../services/syncService');
+            await verificarEProcessarAutomaticamente();
+          }
+        } catch (e) {
+          console.error('Erro ao avaliar processamento de IA:', e);
         }
         setSyncStatus({
           isSync: false,
@@ -175,37 +206,56 @@ export default function AutoSync() {
 // Função auxiliar para sincronizar uma pesquisa
 async function sincronizarPesquisa(pesquisaId: number): Promise<void> {
   const { supabase } = await import('../services/supabaseClient');
-  
+
   const pesquisa = await db.pesquisas.get(pesquisaId);
   if (!pesquisa) throw new Error('Pesquisa não encontrada');
 
-  // Busca o usuário logado
-  const usuarioStr = localStorage.getItem('usuario') || localStorage.getItem('user');
-  const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
+  // Monta payload compatível com o schema atual (criado_em/atualizado_em no banco; sem usuario_id)
+  const payloadBase: any = {
+    formulario_id: pesquisa.formularioUuid,
+    formulario_nome: pesquisa.formularioNome,
+    endereco: pesquisa.endereco,
+    bairro: pesquisa.bairro,
+    cidade: pesquisa.cidade,
+    numero_residencia: pesquisa.numeroResidencia,
+    ponto_referencia: pesquisa.pontoReferencia,
+    nome_entrevistado: pesquisa.nomeEntrevistado,
+    telefone_entrevistado: pesquisa.telefoneEntrevistado,
+    respostas: pesquisa.respostas,
+    latitude: pesquisa.latitude,
+    longitude: pesquisa.longitude,
+    entrevistador: pesquisa.entrevistador,
+    iniciada_em: pesquisa.iniciadaEm ? new Date(pesquisa.iniciadaEm).toISOString() : new Date().toISOString(),
+    finalizada_em: pesquisa.finalizadaEm ? new Date(pesquisa.finalizadaEm).toISOString() : null,
+    status: pesquisa.status,
+  };
 
-  // Upload para Supabase
-  const { error } = await supabase
-    .from('pesquisas')
-    .upsert({
-      id: pesquisa.id,
-      formulario_id: pesquisa.formularioId,
-      usuario_id: usuario?.id || null,
-      endereco: pesquisa.endereco,
-      bairro: pesquisa.bairro,
-      cidade: pesquisa.cidade,
-      respostas: pesquisa.respostas,
-      status: pesquisa.status,
-      aceite_participacao: pesquisa.aceite_participacao,
-      motivo_recusa: pesquisa.motivo_recusa,
-      finalizada_em: pesquisa.finalizadaEm,
-      created_at: pesquisa.iniciadaEm,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (error) throw error;
-
-  // Marca como sincronizada
-  await db.pesquisas.update(pesquisaId, {
-    sincronizado: true,
-  });
+  if (pesquisa.uuid) {
+    // UPDATE quando já existe no servidor
+    const { error } = await supabase
+      .from('pesquisas')
+      .update(payloadBase)
+      .eq('id', pesquisa.uuid);
+    if (error) throw error;
+    await db.pesquisas.update(pesquisaId, { sincronizado: true });
+  } else {
+    // INSERT quando ainda não tem UUID remoto
+    const { data, error } = await supabase
+      .from('pesquisas')
+      .insert(payloadBase)
+      .select()
+      .single();
+    if (error) throw error;
+    if (data?.id) {
+      await db.pesquisas.update(pesquisaId, { uuid: data.id, sincronizado: true });
+      // Atualiza job de mídia, se existir, com o novo uuid
+      try {
+        const { mediaJobs } = db;
+        const job = await mediaJobs.where({ pesquisaId }).first();
+        if (job && !job.uuid) {
+          await mediaJobs.update(job.id!, { uuid: data.id, status: 'pendente', proximaTentativa: Date.now() });
+        }
+      } catch {}
+    }
+  }
 }

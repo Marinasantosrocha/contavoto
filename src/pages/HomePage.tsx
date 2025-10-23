@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../services/supabaseClient';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { useFormularios, useInicializarFormulario } from '../hooks/useFormularios';
+import { useFormularios } from '../hooks/useFormularios';
+import { CustomSelect } from '../components/CustomSelect';
 import { useEstatisticasPesquisas, useCriarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
@@ -20,8 +23,8 @@ export const HomePage = ({
   onVerPesquisas,
   onNavigateToDashboard,
   onNavigateToSettings,
-  onNavigateToPermissions,
-  onLogout
+  onNavigateToPermissions: _onNavigateToPermissions,
+  onLogout: _onLogout
 }: HomePageProps) => {
   
   // Obter dados do usuário logado
@@ -50,7 +53,6 @@ export const HomePage = ({
   const { data: formularios = [], isLoading: loadingFormularios } = useFormularios();
   const { data: estatisticas } = useEstatisticasPesquisas(isPesquisador ? usuarioId : undefined);
   const criarPesquisa = useCriarPesquisa();
-  const inicializarFormulario = useInicializarFormulario();
   
   // Estados locais
   const [formularioSelecionado, setFormularioSelecionado] = useState<number | null>(null);
@@ -67,6 +69,28 @@ export const HomePage = ({
   const [geminiLatenciaMs, setGeminiLatenciaMs] = useState<number | null>(null);
   const [modelos, setModelos] = useState<string[] | null>(null);
   const [listandoModelos, setListandoModelos] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [pendenciasCount, setPendenciasCount] = useState<number | null>(null);
+  const navigate = useNavigate();
+
+  // Fallback offline: reutiliza último endereço geocodificado com sucesso
+  const salvarEnderecoLocal = (dados: { endereco: string; numero?: string; bairro: string; cidade: string }) => {
+    const payload = {
+      ...dados,
+      timestamp: Date.now(),
+    };
+    try { localStorage.setItem('lastKnownAddress', JSON.stringify(payload)); } catch {}
+  };
+
+  const carregarEnderecoLocal = (): { endereco: string; numero?: string; bairro: string; cidade: string } | null => {
+    try {
+      const raw = localStorage.getItem('lastKnownAddress');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Carregar localização automaticamente se for pesquisador
@@ -74,6 +98,29 @@ export const HomePage = ({
       carregarLocalizacao();
     }
   }, [isPesquisador]);
+
+  // Carrega contador de transcrições pendentes para superadmin
+  useEffect(() => {
+    let cancel = false;
+    async function carregarPendencias() {
+      if (!isSuperAdmin) return;
+      try {
+        // Conta direto na fila de transcrição: pendente + processando
+        const { count, error } = await supabase
+          .from('transcription_jobs')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['pendente', 'processando']);
+        if (!cancel) {
+          setPendenciasCount(error ? null : (count ?? 0));
+        }
+      } catch {
+        if (!cancel) setPendenciasCount(null);
+      }
+    }
+    carregarPendencias();
+    const id = setInterval(carregarPendencias, 15000);
+    return () => { cancel = true; clearInterval(id); };
+  }, [isSuperAdmin]);
 
   const carregarLocalizacao = async () => {
     setLocalizacaoCarregando(true);
@@ -85,6 +132,17 @@ export const HomePage = ({
             
             // Tentar múltiplas APIs de geocodificação
             try {
+              if (!navigator.onLine) {
+                // Offline: não geocodificar; tenta usar endereço salvo
+                const salvo = carregarEnderecoLocal();
+                if (salvo) {
+                  setEndereco(salvo.endereco);
+                  setNumero(salvo.numero || '');
+                  setBairro(salvo.bairro);
+                  setCidade(salvo.cidade);
+                }
+                return;
+              }
               // Primeira tentativa: BigDataCloud (evita CORS do Nominatim)
               const bdcResponse = await fetch(
                 `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt-BR`
@@ -103,8 +161,12 @@ export const HomePage = ({
                 } else {
                   console.log('Número não detectado - usuário deve preencher manualmente');
                 }
-                setBairro(bdcData.principalSubdivision || bdcData.district || bdcData.localityInfo?.administrative?.[1]?.name || 'Bairro não encontrado');
-                setCidade(bdcData.city || bdcData.locality || bdcData.localityInfo?.administrative?.[2]?.name || 'Cidade não encontrada');
+                const bairroLocal = bdcData.principalSubdivision || bdcData.district || bdcData.localityInfo?.administrative?.[1]?.name || 'Bairro não encontrado';
+                const cidadeLocal = bdcData.city || bdcData.locality || bdcData.localityInfo?.administrative?.[2]?.name || 'Cidade não encontrada';
+                setBairro(bairroLocal);
+                setCidade(cidadeLocal);
+                // Persistir para uso offline
+                salvarEnderecoLocal({ endereco: rua || 'Endereço não encontrado', numero: numeroCasa, bairro: bairroLocal, cidade: cidadeLocal });
               } else {
                 throw new Error('BigDataCloud sem dados úteis');
               }
@@ -113,6 +175,16 @@ export const HomePage = ({
 
               // Segunda tentativa: Nominatim (pode falhar por CORS; usado apenas como fallback)
               try {
+                if (!navigator.onLine) {
+                  const salvo = carregarEnderecoLocal();
+                  if (salvo) {
+                    setEndereco(salvo.endereco);
+                    setNumero(salvo.numero || '');
+                    setBairro(salvo.bairro);
+                    setCidade(salvo.cidade);
+                  }
+                  return;
+                }
                 const nominatimResponse = await fetch(
                   `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR,pt,en`
                 );
@@ -128,13 +200,25 @@ export const HomePage = ({
                   if (numeroCasa) {
                     console.log('Número detectado automaticamente (Nominatim):', numeroCasa);
                   }
-                  setBairro(addr.suburb || addr.neighbourhood || addr.quarter || addr.village || 'Bairro não encontrado');
-                  setCidade(addr.city || addr.town || addr.municipality || addr.county || 'Cidade não encontrada');
+                  const bairroLocal = addr.suburb || addr.neighbourhood || addr.quarter || addr.village || 'Bairro não encontrado';
+                  const cidadeLocal = addr.city || addr.town || addr.municipality || addr.county || 'Cidade não encontrada';
+                  setBairro(bairroLocal);
+                  setCidade(cidadeLocal);
+                  // Persistir para uso offline
+                  salvarEnderecoLocal({ endereco: rua || 'Endereço não encontrado', numero: numeroCasa, bairro: bairroLocal, cidade: cidadeLocal });
                 } else {
                   throw new Error('Nominatim sem dados úteis');
                 }
               } catch (nominatimError) {
                 console.warn('Não foi possível obter endereço automaticamente. Preencha manualmente.');
+                // Tentar último endereço salvo como fallback
+                const salvo = carregarEnderecoLocal();
+                if (salvo) {
+                  setEndereco(salvo.endereco);
+                  setNumero(salvo.numero || '');
+                  setBairro(salvo.bairro);
+                  setCidade(salvo.cidade);
+                }
               }
             }
           },
@@ -158,6 +242,14 @@ export const HomePage = ({
             setBairro(errorMessage);
             setEndereco(errorMessage);
             setNumero('');
+            // Fallback para último endereço salvo
+            const salvo = carregarEnderecoLocal();
+            if (salvo) {
+              setEndereco(salvo.endereco);
+              setNumero(salvo.numero || '');
+              setBairro(salvo.bairro);
+              setCidade(salvo.cidade);
+            }
           },
           {
             enableHighAccuracy: true,
@@ -177,6 +269,14 @@ export const HomePage = ({
       setBairro('Erro ao carregar localização');
       setEndereco('Erro ao carregar localização');
       setNumero('');
+      // Fallback para último endereço salvo
+      const salvo = carregarEnderecoLocal();
+      if (salvo) {
+        setEndereco(salvo.endereco);
+        setNumero(salvo.numero || '');
+        setBairro(salvo.bairro);
+        setCidade(salvo.cidade);
+      }
     } finally {
       setLocalizacaoCarregando(false);
     }
@@ -220,22 +320,41 @@ export const HomePage = ({
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    if (onLogout) onLogout();
-  };
-
-  const handleGoToPermissions = () => {
-    if (onNavigateToPermissions) onNavigateToPermissions();
-  };
+  // Removidos handlers não utilizados para evitar erros de compilação (noUnusedLocals)
 
   const handleGoToSettings = () => {
     if (onNavigateToSettings) onNavigateToSettings();
   };
 
-  const handleInicializarFormulario = () => {
-    inicializarFormulario.mutate();
-  };
+  async function executarSincronizacao() {
+    if (!navigator.onLine) {
+      alert('Você está offline. Conecte-se à internet para sincronizar.');
+      return;
+    }
+    setSyncing(true);
+    try {
+      try {
+        const { processMediaQueueOnce } = await import('../services/mediaQueue');
+        await processMediaQueueOnce();
+      } catch {}
+      const { PesquisaService } = await import('../services/pesquisaService');
+      await PesquisaService.sincronizar();
+      // IA apenas para superadmin
+      if (isSuperAdmin) {
+        try {
+          const { verificarEProcessarAutomaticamente } = await import('../services/syncService');
+          await verificarEProcessarAutomaticamente();
+        } catch {}
+      }
+      alert('Sincronização executada.');
+    } catch (e: any) {
+      alert('Erro na sincronização: ' + (e?.message || String(e)));
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  // Removido: criação de formulário modelo local (usar Supabase)
 
   const handleTestarGemini = async () => {
     setGeminiTestando(true);
@@ -310,38 +429,6 @@ export const HomePage = ({
                 </div>
               )}
             </div>
-            
-            {/* Menu do Usuário */}
-            <div className="user-menu">
-              <button className="user-menu-button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                </svg>
-              </button>
-              <div className="user-menu-dropdown">
-                <div className="user-menu-item" onClick={handleGoToSettings}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-                  </svg>
-                  Configurações
-                </div>
-                {isSuperAdmin && (
-                  <div className="user-menu-item" onClick={handleGoToPermissions}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 7H16c-.8 0-1.54.37-2.01 1.01L12 10.5l-1.99-2.49A2.5 2.5 0 0 0 8 7H5.46c-.8 0-1.52.57-1.42 1.37L6.5 16H9v6h2v-6h2v6h2z"/>
-                    </svg>
-                    Usuários
-                  </div>
-                )}
-                <div className="user-menu-divider"></div>
-                <div className="user-menu-item logout" onClick={handleLogout}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
-                  </svg>
-                  Sair
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -380,34 +467,21 @@ export const HomePage = ({
               </div>
 
               <div className="form-group">
-                <label className="form-label">Selecione o Formulário *</label>
-                <select
-                  className="form-select"
-                  value={formularioSelecionado || ''}
-                  onChange={(e) => setFormularioSelecionado(Number(e.target.value))}
-                  required
-                  disabled={loadingFormularios}
-                >
-                  <option value="">
-                    {loadingFormularios ? 'Carregando...' : 'Escolha um formulário...'}
-                  </option>
-                  {formularios.map((form) => (
-                    <option key={form.id} value={form.id}>
-                      {form.nome}
-                    </option>
-                  ))}
-                </select>
+                <CustomSelect
+                  label="Selecione o Formulário *"
+                  options={[
+                    { value: '', label: loadingFormularios ? 'Carregando...' : 'Escolha um formulário...' },
+                    ...formularios
+                      .filter((form) => typeof form.id === 'number')
+                      .map((form) => ({ value: form.id as number, label: form.nome }))
+                  ]}
+                  value={formularioSelecionado ?? ''}
+                  onChange={(v) => setFormularioSelecionado(v ? Number(v) : null)}
+                />
                 {formularios.length === 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <button
-                      onClick={handleInicializarFormulario}
-                      className="btn btn-secondary btn-small"
-                      disabled={inicializarFormulario.isPending}
-                    >
-                      {inicializarFormulario.isPending ? '⏳ Inicializando...' : '📋 Criar Formulário Modelo'}
-                    </button>
-                    <small style={{ display: 'block', marginTop: '0.5rem', color: '#6c757d' }}>
-                      Nenhum formulário encontrado. Clique para criar o formulário modelo com 38 perguntas.
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <small style={{ display: 'block', color: '#dc3545' }}>
+                      Nenhum formulário encontrado. Conecte-se à internet para baixar do Supabase.
                     </small>
                   </div>
                 )}
@@ -529,9 +603,17 @@ export const HomePage = ({
                   {tipoUsuarioId === 2 && 'Candidato - Visualização de dados'}
                 </p>
               </div>
-              <div className="text-center">
-                <p>Você não tem permissão para criar pesquisas.</p>
-                <p>Use o menu abaixo para navegar pelas funcionalidades disponíveis.</p>
+              <div className="text-center" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+                <button className="btn" onClick={executarSincronizacao} disabled={syncing || !navigator.onLine}>
+                  {syncing ? 'Sincronizando...' : 'Sincronizar agora'}
+                </button>
+                <p className="muted" style={{ margin: 0 }}>Processa uploads pendentes e atualiza dados.</p>
+                {isSuperAdmin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="badge">Pendências de transcrição: {pendenciasCount ?? '—'}</span>
+                    <button className="btn btn-ghost" onClick={() => navigate('/transcricoes')}>Abrir fila</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

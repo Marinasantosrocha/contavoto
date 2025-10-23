@@ -3,13 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
 
-interface TipoUsuario {
-  id: string;
-  nome: string;
-  descricao: string;
-  nivel_permissao: number;
-}
-
 interface PoliticaVisualizacao {
   tipo_usuario: string;
   pode_ver_pesquisas: boolean;
@@ -22,13 +15,7 @@ interface PoliticaVisualizacao {
 
 export const ConfiguracoesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [tiposUsuario] = useState<TipoUsuario[]>([
-    { id: '1', nome: 'superadmin', descricao: 'Super Administrador', nivel_permissao: 5 },
-    { id: '2', nome: 'admin', descricao: 'Administrador', nivel_permissao: 4 },
-    { id: '3', nome: 'suporte', descricao: 'Suporte Técnico', nivel_permissao: 3 },
-    { id: '4', nome: 'candidato', descricao: 'Candidato', nivel_permissao: 2 },
-    { id: '5', nome: 'pesquisador', descricao: 'Pesquisador', nivel_permissao: 1 },
-  ]);
+  // Tipos de usuário definidos no backend; mantido aqui apenas como referência de UI se necessário
 
   const [politicas, setPoliticas] = useState<PoliticaVisualizacao[]>([
     {
@@ -83,6 +70,7 @@ export const ConfiguracoesPage: React.FC = () => {
   const [offlineMode, setOfflineMode] = useState(true);
   const [tema, setTema] = useState('claro');
   const [idioma, setIdioma] = useState('pt-BR');
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     // Carregar configurações salvas
@@ -97,14 +85,32 @@ export const ConfiguracoesPage: React.FC = () => {
     }
   }, []);
 
-  const updatePolitica = (index: number, campo: keyof PoliticaVisualizacao, valor: boolean) => {
-    const novasPoliticas = [...politicas];
-    novasPoliticas[index] = {
-      ...novasPoliticas[index],
-      [campo]: valor
-    };
-    setPoliticas(novasPoliticas);
-  };
+  async function executarSincronizacao() {
+    if (!navigator.onLine) {
+      alert('Você está offline. Conecte-se à internet para sincronizar.');
+      return;
+    }
+    setSyncing(true);
+    try {
+      try {
+        const { processMediaQueueOnce } = await import('../services/mediaQueue');
+        await processMediaQueueOnce();
+      } catch {}
+      const { PesquisaService } = await import('../services/pesquisaService');
+      await PesquisaService.sincronizar();
+      try {
+        const { verificarEProcessarAutomaticamente } = await import('../services/syncService');
+        await verificarEProcessarAutomaticamente();
+      } catch {}
+      alert('Sincronização executada.');
+    } catch (e: any) {
+      alert('Erro na sincronização: ' + (e?.message || String(e)));
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  // Funções de edição de políticas podem ser adicionadas futuramente
 
   const handleSalvar = () => {
     const configs = {
@@ -223,7 +229,7 @@ export const ConfiguracoesPage: React.FC = () => {
             </div>
             
             <div className="modern-list">
-              {politicas.map((politica, index) => (
+              {politicas.map((politica, _index) => (
                 <div key={politica.tipo_usuario} className="list-item">
                   <div className="list-item-icon">
                     {politica.tipo_usuario === 'superadmin' && (
@@ -273,6 +279,20 @@ export const ConfiguracoesPage: React.FC = () => {
             </div>
             
             <div className="modern-list">
+              <div className="list-item">
+                <div className="list-item-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#6b7280">
+                    <path d="M12 6V3L8 7L12 11V8C15.31 8 18 10.69 18 14C18 15.01 17.75 15.97 17.3 16.8L18.76 18.26C19.54 17.03 20 15.57 20 14C20 9.58 16.42 6 12 6M6.7 7.2L5.24 5.74C4.46 6.97 4 8.43 4 10C4 14.42 7.58 18 12 18V21L16 17L12 13V16C8.69 16 6 13.31 6 10C6 8.99 6.25 8.03 6.7 7.2Z"/>
+                  </svg>
+                </div>
+                <div className="list-item-content">
+                  <div className="list-item-title">Sincronizar agora</div>
+                  <div className="list-item-subtitle">Processa uploads pendentes e atualiza dados</div>
+                </div>
+                <button className="btn" onClick={executarSincronizacao} disabled={syncing || !navigator.onLine}>
+                  {syncing ? 'Sincronizando...' : 'Executar'}
+                </button>
+              </div>
               <div className="list-item">
                 <div className="list-item-icon">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="#6b7280">

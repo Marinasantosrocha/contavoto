@@ -5,7 +5,12 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
 const API_BASE = 'https://generativelanguage.googleapis.com/v1';
 
 // Candidatos de modelos compatíveis (ordem de preferência)
+// Preferimos 2.5 > 2.0 > 1.5 e "flash" > "pro" para latência/custo
 const MODEL_CANDIDATES = [
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'gemini-2.0-flash',
+  'gemini-2.0-pro',
   'gemini-1.5-flash',
   'gemini-1.5-flash-8b',
   'gemini-1.5-flash-002',
@@ -65,8 +70,10 @@ function scoreModelId(id: string): number {
   let score = 0;
   if (s.includes('flash')) score += 50; // preferir flash para custo/latência
   if (s.includes('pro')) score += 30;
-  if (/(^|[-])1\.5($|[-])/i.test(s)) score += 15;
-  if (/(^|[-])2(\.|$)/i.test(s)) score += 10; // modelos 2.x
+  // Preferir fortemente 2.x (especialmente 2.5), depois 1.5
+  if (/(^|[-])2\.5(\.|$)/i.test(s)) score += 40; // 2.5 top
+  else if (/(^|[-])2(\.|$)/i.test(s)) score += 30; // demais 2.x
+  else if (/(^|[-])1\.5($|[-])/i.test(s)) score += 10;
   if (s.endsWith('latest')) score += 5;
   return score;
 }

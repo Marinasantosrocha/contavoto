@@ -3,6 +3,7 @@ import { supabase, isOnline } from './supabaseClient';
 
 export class PesquisaService {
   private static isSyncing = false;
+  private static formulariosChannel: ReturnType<typeof supabase.channel> | null = null;
 
   // ============ FORMULÁRIOS ============
   
@@ -21,7 +22,152 @@ export class PesquisaService {
   }
 
   static async buscarFormularios() {
+    // Estratégia offline-first inteligente:
+    // - Sempre retorna cache local
+    // - Se online, faz sincronização delta por atualizado_em
+    // - Uma vez a cada 24h, faz refresh completo para reconciliar deleções
+
+    const CACHE_KEY_DELTA = 'forms:lastDeltaSyncAt';
+    const CACHE_KEY_FULL = 'forms:lastFullSyncAt';
+
+    if (isOnline()) {
+      const nowIso = new Date().toISOString();
+      try {
+        const kv = db.kv;
+        const lastDelta = await kv.get(CACHE_KEY_DELTA) as any;
+        const lastFull = await kv.get(CACHE_KEY_FULL) as any;
+
+        const lastFullDate = lastFull?.value ? new Date(lastFull.value) : null;
+        const needsFull = !lastFullDate || (Date.now() - lastFullDate.getTime()) > 24 * 60 * 60 * 1000;
+
+        if (needsFull) {
+          // FULL REFRESH: busca tudo, reconcilia deleções
+          const { data, error } = await supabase
+            .from('formularios')
+            .select('id, nome, descricao, pre_candidato, telefone_contato, campos, criado_em, atualizado_em')
+            .order('criado_em', { ascending: false });
+
+          if (!error && Array.isArray(data)) {
+            // Reconcilia: remove locais que não existem mais
+            const remoteIds = new Set<string>(data.map((f: any) => f.id));
+            const locais = await db.formularios.toArray();
+            for (const loc of locais) {
+              if (loc.uuid && !remoteIds.has(loc.uuid)) {
+                await db.formularios.delete(loc.id!);
+              }
+            }
+
+            // Upsert remotos
+            for (const f of data) {
+              const existente = await db.formularios.where({ uuid: f.id }).first();
+              const payload: Omit<Formulario, 'id'> = {
+                uuid: f.id,
+                nome: f.nome,
+                descricao: f.descricao,
+                preCandidato: f.pre_candidato,
+                telefoneContato: f.telefone_contato,
+                campos: f.campos,
+                criadoEm: f.criado_em ? new Date(f.criado_em) : new Date(),
+                sincronizado: true,
+              };
+              if (existente?.id) {
+                await db.formularios.update(existente.id, payload);
+              } else {
+                await db.formularios.add(payload);
+              }
+            }
+
+            await kv.put({ key: CACHE_KEY_FULL, value: nowIso });
+            await kv.put({ key: CACHE_KEY_DELTA, value: nowIso });
+          }
+        } else {
+          // DELTA REFRESH por atualizado_em >= lastDelta - 1s
+          const lastDeltaIso = lastDelta?.value || new Date(0).toISOString();
+          const margin = new Date(new Date(lastDeltaIso).getTime() - 1000).toISOString();
+          const { data, error } = await supabase
+            .from('formularios')
+            .select('id, nome, descricao, pre_candidato, telefone_contato, campos, criado_em, atualizado_em')
+            .gte('atualizado_em', margin)
+            .order('atualizado_em', { ascending: true });
+
+          if (!error && Array.isArray(data)) {
+            for (const f of data) {
+              const existente = await db.formularios.where({ uuid: f.id }).first();
+              const payload: Omit<Formulario, 'id'> = {
+                uuid: f.id,
+                nome: f.nome,
+                descricao: f.descricao,
+                preCandidato: f.pre_candidato,
+                telefoneContato: f.telefone_contato,
+                campos: f.campos,
+                criadoEm: f.criado_em ? new Date(f.criado_em) : new Date(),
+                sincronizado: true,
+              };
+              if (existente?.id) {
+                await db.formularios.update(existente.id, payload);
+              } else {
+                await db.formularios.add(payload);
+              }
+            }
+            await kv.put({ key: CACHE_KEY_DELTA, value: nowIso });
+          }
+        }
+      } catch (err) {
+        console.warn('Falha ao sincronizar formularios (delta/full). Usando cache local.', err);
+      }
+    }
+
+    // Sempre retorna o cache local (atualizado quando online)
     return await db.formularios.toArray();
+  }
+
+  static initFormulariosRealtime() {
+    // Assina mudanças em tempo real na tabela formularios para manter o cache sempre fresco quando online
+    if (this.formulariosChannel) return;
+    try {
+      this.formulariosChannel = supabase
+        .channel('realtime-formularios')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'formularios' }, async (payload: any) => {
+          try {
+            if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              const existente = await db.formularios.where({ uuid: oldId }).first();
+              if (existente?.id) await db.formularios.delete(existente.id);
+              return;
+            }
+
+            const f = payload.new;
+            const existente = await db.formularios.where({ uuid: f.id }).first();
+            const toSave: Omit<Formulario, 'id'> = {
+              uuid: f.id,
+              nome: f.nome,
+              descricao: f.descricao,
+              preCandidato: f.pre_candidato,
+              telefoneContato: f.telefone_contato,
+              campos: f.campos,
+              criadoEm: f.criado_em ? new Date(f.criado_em) : new Date(),
+              sincronizado: true,
+            };
+            if (existente?.id) {
+              await db.formularios.update(existente.id, toSave);
+            } else {
+              await db.formularios.add(toSave);
+            }
+          } catch (e) {
+            console.warn('Falha ao aplicar evento realtime de formularios:', e);
+          }
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn('Realtime não disponível para formularios:', e);
+    }
+  }
+
+  static stopFormulariosRealtime() {
+    if (this.formulariosChannel) {
+      try { this.formulariosChannel.unsubscribe(); } catch {}
+      this.formulariosChannel = null;
+    }
   }
 
   static async buscarFormularioPorId(id: number) {
@@ -351,6 +497,8 @@ export class PesquisaService {
                   .getPublicUrl(fileName);
                 
                 updateData.audio_url = urlData.publicUrl;
+                // Sempre marca como pendente quando um novo áudio é enviado
+                updateData.stt_status = 'pendente';
                 console.log(`✅ Áudio enviado: ${urlData.publicUrl}`);
               }
             } catch (audioError) {
@@ -370,6 +518,17 @@ export class PesquisaService {
               const { processMediaQueueOnce } = await import('./mediaQueue');
               await processMediaQueueOnce();
             } catch {}
+
+            // Enfileirar job de transcrição se audio_url foi setado e ainda não há transcrição
+            try {
+              const audioSetado = (updateData as any).audio_url;
+              if (audioSetado && pesquisa.uuid) {
+                const { enqueueTranscriptionJob } = await import('./transcriptionJobService');
+                await enqueueTranscriptionJob(pesquisa.uuid, audioSetado);
+              }
+            } catch (e) {
+              console.warn('Não foi possível enfileirar job de transcrição (UPDATE):', e);
+            }
           }
         } else {
           // Inserir
@@ -460,18 +619,30 @@ export class PesquisaService {
                   console.log(`✅ Áudio enviado: ${audioUrl}`);
                   
                   // Atualizar pesquisa com audio_url
+                  const toUpdate: any = {
+                    audio_url: audioUrl,
+                    audio_duracao: pesquisa.audio_duracao,
+                    transcricao_completa: pesquisa.transcricao_completa,
+                    processamento_ia_status: pesquisa.processamento_ia_status
+                  };
+                  // Sempre marca como pendente quando um novo áudio é enviado
+                  toUpdate.stt_status = 'pendente';
                   const { error: updateError } = await supabase
                     .from('pesquisas')
-                    .update({
-                      audio_url: audioUrl,
-                      audio_duracao: pesquisa.audio_duracao,
-                      transcricao_completa: pesquisa.transcricao_completa,
-                      processamento_ia_status: pesquisa.processamento_ia_status
-                    })
+                    .update(toUpdate)
                     .eq('id', data.id);
                   
                   if (!updateError) {
                     console.log(`✅ Áudio URL atualizado na pesquisa ${data.id}`);
+                    // Reflete localmente para consistência de UI
+                    await db.pesquisas.update(pesquisa.id!, { audio_url: audioUrl });
+                    // Garante criação do job de transcrição imediatamente no caminho online
+                    try {
+                      const { enqueueTranscriptionJob } = await import('./transcriptionJobService');
+                      await enqueueTranscriptionJob(data.id, audioUrl);
+                    } catch (e) {
+                      console.warn('Não foi possível enfileirar job de transcrição (INSERT após upload):', e);
+                    }
                   }
                 }
               } catch (audioError) {
@@ -481,6 +652,8 @@ export class PesquisaService {
             
             // Marcar como sincronizado de dados (o job cuidará do áudio)
             await db.pesquisas.update(pesquisa.id!, { sincronizado: true });
+
+            // Enfileiramento já tratado logo após o upload/remoto.
           }
         }
       } catch (error) {
@@ -498,22 +671,9 @@ export class PesquisaService {
   }
 
   static async inicializarFormularioModelo() {
-    const count = await db.formularios.count();
-    if (count === 0) {
-      // Importa AMBOS os formulários
-      const { 
-        formularioPortaAPortaModelo,
-        formularioPortaAPortaCompleto 
-      } = await import('../data/formularioModelo');
-      
-      // Adicionar formulário de teste (4 perguntas)
-      await this.salvarFormulario(formularioPortaAPortaModelo);
-      console.log('✅ Formulário de teste criado (4 perguntas)');
-      
-      // Adicionar formulário completo
-      await this.salvarFormulario(formularioPortaAPortaCompleto);
-      console.log('✅ Formulário completo criado');
-    }
+    // Deprecado: formulários devem existir no Supabase
+    console.warn('inicializarFormularioModelo() está deprecado. Crie formulários no Supabase.');
+    return;
   }
 }
 

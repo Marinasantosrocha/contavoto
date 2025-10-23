@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Pesquisa } from '../db/localDB';
+import { useEffect, useMemo, useState } from 'react';
 import { usePesquisas, useDeletarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
+import { supabase } from '../services/supabaseClient';
+import { CustomSelect } from '../components/CustomSelect';
 
 interface ListaPesquisasPageProps {
   onVoltar: () => void;
@@ -11,16 +12,90 @@ interface ListaPesquisasPageProps {
 export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisasPageProps) => {
   // Estados locais
   const [filtro, setFiltro] = useState<'todas' | 'em_andamento' | 'finalizada'>('todas');
-  const [pesquisaSelecionada, setPesquisaSelecionada] = useState<Pesquisa | null>(null);
+  const [pesquisaSelecionada, setPesquisaSelecionada] = useState<any | null>(null);
+  // Mantido para uso futuro em reprodução completa; não utilizado após simplificação do player
+  // const [audioDurations, setAudioDurations] = useState<Record<number, number>>({});
   const [swipedItemId, setSwipedItemId] = useState<number | null>(null);
   const [swipeOffset, setSwipeOffset] = useState<{[key: number]: number}>({});
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  // const [audioProgress, setAudioProgress] = useState<Record<number, number>>({});
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const audioMapRef = useMemo(() => new Map<number, HTMLAudioElement>(), []);
+  // Admin (Super) - estados
+  const [adminFormOptions, setAdminFormOptions] = useState<Array<{value: string, label: string}>>([]);
+  const [adminFormSel, setAdminFormSel] = useState<string>('all');
+  const [adminPesquisas, setAdminPesquisas] = useState<any[]>([]);
+  const [adminLoading, setAdminLoading] = useState<boolean>(false);
+  const [adminMapForm, setAdminMapForm] = useState<Record<string, any>>({});
+  const [adminMapResp, setAdminMapResp] = useState<Record<string, any>>({});
+  const [adminLimit, setAdminLimit] = useState<number>(20);
 
   // React Query hooks
   const filtroObj = filtro === 'todas' ? undefined : { status: filtro };
   const { data: pesquisas = [], isLoading } = usePesquisas(filtroObj);
   const deletarPesquisa = useDeletarPesquisa();
+
+  // Usuário e papel
+  const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
+  const isSuperAdmin = tipoUsuarioId === 5;
+
+  // Bloqueia scroll do fundo quando o modal estiver aberto (bottom sheet)
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    if (pesquisaSelecionada) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = prevOverflow || '';
+    }
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [pesquisaSelecionada]);
+
+  // util caso voltarmos a exibir duração/contador
+  // const formatDuration = (seconds?: number | null) => {
+  //   if (!seconds || !isFinite(seconds) || seconds < 0) return '0:00';
+  //   const m = Math.floor(seconds / 60);
+  //   const s = Math.floor(seconds % 60);
+  //   return `${m}:${s.toString().padStart(2, '0')}`;
+  // };
+
+  const beautifyKey = (key: string) => {
+    // snake_case -> 'Palavra palavra' (primeira letra maiúscula, demais minúsculas)
+    const s = key.replace(/_/g, ' ').trim();
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  };
+
+  const togglePlayCard = async (id: number, url?: string | null) => {
+    if (!url) return;
+    // pausa o que estiver tocando
+    if (playingId && audioMapRef.has(playingId)) {
+      const current = audioMapRef.get(playingId)!;
+      current.pause();
+      current.currentTime = 0;
+    }
+    // se o mesmo card foi clicado, pare e desative
+    if (playingId === id) {
+      setPlayingId(null);
+      return;
+    }
+
+    let audio = audioMapRef.get(id);
+    if (!audio) {
+      audio = new Audio(url);
+      audio.preload = 'metadata';
+      audio.addEventListener('ended', () => {
+        setPlayingId(null);
+      });
+      audioMapRef.set(id, audio);
+    }
+    await audio.play();
+    setPlayingId(id);
+  };
 
   // Swipe handler para mobile
   const minSwipeToReveal = 80; // pixels para revelar o botão
@@ -81,6 +156,248 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     return badges[status as keyof typeof badges] || badges.em_andamento;
   };
 
+  // Carregar opções de formulários (somente admin)
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let cancel = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('formularios').select('id,nome').order('nome');
+        if (error) throw error;
+        if (cancel) return;
+        const opts = [{ value: 'all', label: 'Todos os formulários' }, ...(data || []).map((f: any) => ({ value: f.id, label: f.nome }))];
+        setAdminFormOptions(opts);
+      } catch (e) {
+        setAdminFormOptions([{ value: 'all', label: 'Todos os formulários' }]);
+      }
+    })();
+    return () => { cancel = true; };
+  }, [isSuperAdmin]);
+
+  // Carregar pesquisas do servidor + mapear respostas e formulários
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let cancel = false;
+    (async () => {
+      setAdminLoading(true);
+      try {
+        // 1) Pesquisas (filtradas por formulário se selecionado)
+        let query = supabase
+          .from('pesquisas')
+          .select('id, formulario_id, formulario_nome, endereco, bairro, cidade, entrevistador, iniciada_em, status, audio_url, audio_duracao, respostas_ia, observacoes_ia')
+          .order('iniciada_em', { ascending: false })
+          .range(0, Math.max(0, adminLimit - 1));
+        if (adminFormSel !== 'all') {
+          query = query.eq('formulario_id', adminFormSel);
+        }
+        const { data: pesqData, error: pesqErr } = await query;
+        if (pesqErr) throw pesqErr;
+
+        const pesquisasList = pesqData || [];
+        const ids = pesquisasList.map((p: any) => p.id);
+        const formIds = [...new Set(pesquisasList.map((p: any) => p.formulario_id).filter(Boolean))];
+
+        // 2) Respostas normalizadas
+        let respostasMap: Record<string, any> = {};
+        if (ids.length) {
+          const { data: respData, error: respErr } = await supabase
+            .from('respostas_formulario_buritizeiro')
+            .select('*')
+            .in('pesquisa_id', ids);
+          if (respErr) throw respErr;
+          for (const r of respData || []) respostasMap[r.pesquisa_id] = r;
+        }
+
+        // 3) Formularios (nome já vem junto, mas buscamos metadados extras se precisar)
+        let formMap: Record<string, any> = {};
+        if (formIds.length) {
+          const { data: formsData, error: formsErr } = await supabase
+            .from('formularios')
+            .select('id,nome,descricao,pre_candidato,telefone_contato')
+            .in('id', formIds);
+          if (formsErr) throw formsErr;
+          for (const f of formsData || []) formMap[f.id] = f;
+        }
+
+        if (!cancel) {
+          setAdminPesquisas(pesquisasList);
+          setAdminMapForm(formMap);
+          setAdminMapResp(respostasMap);
+        }
+      } catch (e) {
+        if (!cancel) {
+          setAdminPesquisas([]);
+        }
+      } finally {
+        if (!cancel) setAdminLoading(false);
+      }
+    })();
+    return () => { cancel = true; };
+  }, [isSuperAdmin, adminFormSel, adminLimit]);
+
+  // Resetar limite ao trocar o filtro
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    setAdminLimit(20);
+  }, [adminFormSel, isSuperAdmin]);
+
+  if (isSuperAdmin) {
+    return (
+      <div className="app-container">
+        <header className="modern-header home-header">
+          <div className="header-content">
+            <div className="header-left">
+              <svg 
+                onClick={onVoltar}
+                width="32" 
+                height="32" 
+                viewBox="0 0 24 24" 
+                fill="none"
+                style={{ 
+                  marginRight: '12px',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                <path 
+                  d="M15 18L9 12L15 6" 
+                  stroke="#20B2AA" 
+                  strokeWidth="3" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <h1 className="header-title">Pesquisas</h1>
+            </div>
+          </div>
+        </header>
+
+        <main className="main-content">
+          <div className="page-section">
+            <div className="form-group">
+              <CustomSelect
+                label="Filtrar por formulário"
+                options={adminFormOptions}
+                value={adminFormSel}
+                onChange={(v) => setAdminFormSel((v as string) || 'all')}
+              />
+            </div>
+          </div>
+
+            {adminLoading ? (
+              <div className="spinner-center"><div className="spinner" /></div>
+            ) : adminPesquisas.length === 0 ? (
+              <div className="empty-state"><div className="empty-icon">📋</div><p>Nenhuma pesquisa encontrada</p></div>
+            ) : (
+              <div className="pesquisas-grid">
+                {adminPesquisas.map((p: any) => {
+                  const form = adminMapForm[p.formulario_id] || { nome: p.formulario_nome };
+                  return (
+                    <div key={p.id} className="pesquisa-card" style={{ padding: 12, position: 'relative' }} onClick={() => setPesquisaSelecionada(p)}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                        <div style={{ fontWeight: 600 }}>{form?.nome || p.formulario_nome}</div>
+                      </div>
+                      <div style={{ color: '#6b7280', fontSize: 14, marginBottom: 4 }}>{p.endereco}, {p.bairro} - {p.cidade}</div>
+                      <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: '#6b7280' }}>{new Date(p.iniciada_em).toLocaleString('pt-BR')}</span>
+                        {p.audio_url && (
+                          <button
+                            className="play-icon-button"
+                            onClick={(e) => { e.stopPropagation(); togglePlayCard(p.id, p.audio_url); }}
+                            aria-label={playingId === p.id ? 'Pausar áudio' : 'Reproduzir áudio'}
+                          >
+                            {playingId === p.id ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
+                                <rect x="6" y="5" width="4" height="14"/>
+                                <rect x="14" y="5" width="4" height="14"/>
+                              </svg>
+                            ) : (
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, width: '100%' }}>
+                  <button
+                    onClick={() => setAdminLimit((l) => l + 20)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#6b7280',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      padding: 0,
+                      fontWeight: 600,
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    Mostrar mais
+                  </button>
+                </div>
+              </div>
+            )}
+        </main>
+
+        <BottomNav onNavigateHome={onVoltar} />
+
+        {pesquisaSelecionada && (
+          <div className="modal-overlay" onClick={() => setPesquisaSelecionada(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Detalhes da Pesquisa</h2>
+                <button onClick={() => setPesquisaSelecionada(null)} className="modal-close-btn" aria-label="Fechar">
+                  ✕
+                </button>
+              </div>
+              <div className="modal-body">
+                {(() => {
+                  const p: any = pesquisaSelecionada as any;
+                  const resp = adminMapResp[p.id];
+                  return (
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {/* Removidos: Formulário, Áudio, descrição, pré-candidato, local, status */}
+                      <div className="detail-group"><strong>Entrevistador:</strong><p>{p.entrevistador}</p></div>
+                      {/* Respostas normalizadas */}
+                      <div className="detail-group">
+                        <strong>Respostas:</strong>
+                        {resp ? (
+                          <div className="respostas-list">
+                            {Object.entries(resp)
+                              .filter(([k]) => !['id','pesquisa_id','criado_em','atualizado_em','fonte_json','observacao'].includes(k))
+                              .map(([k,v]) => (
+                              <div key={k} className="resposta-item">
+                                <span className="resposta-key">{beautifyKey(k)}:</span>
+                                <span className="resposta-value">{typeof v === 'object' ? JSON.stringify(v) : String(v ?? '')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ color: '#6b7280' }}>Sem respostas normalizadas para esta pesquisa.</p>
+                        )}
+                      </div>
+                      {/* Removido: bloco de JSON bruto respostas_ia */}
+                      {p.observacoes_ia && (
+                        <div className="detail-group">
+                          <strong>observacoes_ia:</strong>
+                          <p>{p.observacoes_ia}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <header className="modern-header home-header">
@@ -106,7 +423,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                 strokeLinejoin="round"
               />
             </svg>
-            <h1 className="header-title">Pesquisas Realizadas</h1>
+            <h1 className="header-title">Pesquisas</h1>
           </div>
         </div>
       </header>
@@ -134,12 +451,8 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
         </button>
       </div>
 
-      <div className="lista-container">
         {isLoading ? (
-          <div className="empty-state">
-            <div className="empty-icon">⏳</div>
-            <p>Carregando pesquisas...</p>
-          </div>
+          <div className="spinner-center"><div className="spinner" /></div>
         ) : pesquisas.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📋</div>
@@ -280,7 +593,6 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
             })}
           </div>
         )}
-      </div>
       </main>
 
       {/* Bottom Navigation */}

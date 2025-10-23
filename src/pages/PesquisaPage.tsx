@@ -32,15 +32,18 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [mostrarEncerramento, setMostrarEncerramento] = useState(false);
   const [aceitouParticipar, setAceitouParticipar] = useState<boolean | null>(null);
   const [nomeCandidato, setNomeCandidato] = useState<string>('');
+  const [nomeEntrevistador, setNomeEntrevistador] = useState<string>('');
   
   // Estados para gravação contínua
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [transcriptionText, setTranscriptionText] = useState('');
+  const [, setTranscriptionText] = useState('');
   
   // Estados para navegação de perguntas (uma por vez)
   const [perguntaAtualIndex, setPerguntaAtualIndex] = useState(0);
   const [perguntasFeitas, setPerguntasFeitas] = useState<{ [campoId: string]: boolean }>({});
+  const [aceitouVerVideo, setAceitouVerVideo] = useState<boolean | null>(null);
+  const [mostrarVideoAgradecimento, setMostrarVideoAgradecimento] = useState(false);
 
   // Buscar o nome do candidato do usuário logado
   useEffect(() => {
@@ -50,6 +53,10 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
         const usuarioLogadoStr = localStorage.getItem('usuario') || localStorage.getItem('user');
         if (usuarioLogadoStr) {
           const usuarioLogado = JSON.parse(usuarioLogadoStr);
+          // Nome do entrevistador para usar no script de abordagem
+          if (usuarioLogado?.nome || usuarioLogado?.name) {
+            setNomeEntrevistador(usuarioLogado.nome || usuarioLogado.name);
+          }
           
           // Se já tem candidato no localStorage, usa ele
           if (usuarioLogado.candidato) {
@@ -120,21 +127,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const totalPerguntas = todasPerguntas.length;
   const progresso = totalPerguntas > 0 ? ((perguntaAtualIndex + 1) / totalPerguntas) * 100 : 0;
 
-  const handleResposta = async (campoId: string, valor: any) => {
-    const novasRespostas = {
-      ...respostas,
-      [campoId]: valor,
-    };
-
-    setRespostas(novasRespostas);
-
-    // Salva no banco local via React Query
-    salvarResposta.mutate({
-      pesquisaId,
-      campoId,
-      valor,
-    });
-  };
+  // Removido handleResposta não utilizado (evita erro de noUnusedLocals)
 
   const handleAceitarParticipacao = async () => {
     setAceitouParticipar(true);
@@ -273,8 +266,10 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
   // Tela de Encerramento
   if (mostrarEncerramento) {
-    const candidatoExibir = nomeCandidato || formulario.preCandidato;
-    const telefoneContato = formulario.telefoneContato;
+  const telefoneContato = formulario.telefoneContato;
+    const telefoneFormatado = telefoneContato && telefoneContato.trim().length > 0
+      ? telefoneContato
+      : '[DDD] [NÚMERO_DO_PREFEITO]';
 
     return (
       <div className="app-container">
@@ -282,34 +277,83 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
         <main className="main-content">
           <div className="page-section">
+            {/* Encerramento - Parte 1 */}
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">Encerramento</h3>
+                <h3 className="card-title">Encerramento (1/2)</h3>
               </div>
               <div className="encerramento-texto">
                 <p>
-                  "Muito obrigado por dedicar seu tempo para responder. A sua participação é muito importante 
-                  para que o <strong>{candidatoExibir}</strong> possa trabalhar para melhorar cada vez mais o município."
+                  Muito obrigado por dedicar um tempinho para responder.
                 </p>
-
                 <p>
-                  "Inclusive, se o senhor puder, envie uma mensagem para o <strong>{candidatoExibir}</strong>. 
-                  O número dele é <strong>{telefoneContato}</strong>. Ele vai ficar muito feliz em receber sua mensagem."
+                  O <strong>Prefeito Pedro Braga</strong> gravou um vídeo curtinho para agradecer pessoalmente a cada pessoa que está participando dessa escuta.
                 </p>
-
                 <p>
-                  "E se houver algo que o senhor(a) não teve a oportunidade de mencionar durante a pesquisa, 
-                  ou que lembrou em outro momento, e que deseja denunciar ou cobrar das autoridades, 
-                  pode contar com o <strong>{candidatoExibir}</strong>."
+                  É um vídeo simples, de agradecimento, em que ele também fala um pouco sobre o que acredita para o <strong>Norte de Minas</strong> e sobre a importância de ouvir quem vive na região.
                 </p>
-
                 <p>
-                  "E se você puder, envia uma mensagem para o <strong>{candidatoExibir}</strong> avaliando o meu trabalho."
+                  Posso te mostrar agora rapidinho?
                 </p>
 
-                <p className="final">
-                  <strong>Mais uma vez, muito obrigado pela sua participação e tenha um excelente dia!</strong>
+                {aceitouVerVideo === null && (
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <button className="btn btn-primary" onClick={() => { setAceitouVerVideo(true); setMostrarVideoAgradecimento(true); }}>
+                      Mostrar vídeo agora
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => setAceitouVerVideo(false)}>
+                      Pular vídeo
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Vídeo de agradecimento (offline-ready) */}
+            {aceitouVerVideo === true && (
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="card-title">🎬 Vídeo de Agradecimento</h3>
+                </div>
+                {!mostrarVideoAgradecimento ? (
+                  <button
+                    onClick={() => setMostrarVideoAgradecimento(true)}
+                    className="btn btn-secondary w-full"
+                  >
+                    Assistir vídeo de agradecimento
+                  </button>
+                ) : (
+                  <div>
+                    <video
+                      controls
+                      preload="auto"
+                      style={{ width: '100%', borderRadius: '12px' }}
+                      src="/agradecimento.mp4"
+                    >
+                      Seu navegador não suporta o elemento de vídeo.
+                    </video>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '8px' }}>
+                      Dica: o vídeo é salvo para uso offline após a primeira visualização. Se não carregar,
+                      conecte-se à internet uma vez para baixar.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Encerramento - Parte 2 */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Encerramento (2/2)</h3>
+              </div>
+              <div className="encerramento-texto">
+                <p>
+                  E se em algum momento você quiser mandar uma sugestão, contar um problema ou deixar uma ideia, pode falar direto com o <strong>Prefeito Pedro Braga</strong> pelo WhatsApp: <strong>{telefoneFormatado}</strong>.
                 </p>
+                <p>
+                  Ele vai ficar feliz em receber sua mensagem. Se puder, salva o contato como <strong>Prefeito Pedro Braga</strong> no seu celular, pra ficar mais fácil de falar com a gente depois.
+                </p>
+                <p className="final"><strong>Mais uma vez, muito obrigado pela atenção e tenha um excelente dia!</strong></p>
               </div>
             </div>
 
@@ -382,14 +426,12 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                 </div>
                 <div className="script-box">
                   <p>
-                    "Bom dia! Tudo bem? Desculpe incomodar. Eu trabalho para o <strong>{nomeCandidato || formulario.preCandidato}</strong>. 
-                    Ele tem trabalhado e buscado melhorias aqui para o bairro e o <strong>{nomeCandidato || formulario.preCandidato}</strong> gostaria 
-                    de saber a sua opinião para buscar solução para ajudar a resolver as demandas dos moradores, 
-                    principalmente em relação aos serviços públicos."
+                    “Bom dia, tudo bem? Meu nome é <strong>{nomeEntrevistador || '—'}</strong> e eu faço parte da equipe do <strong>Prefeito Pedro Braga</strong>, de <strong>Buritizeiro</strong>.
+                    Estamos visitando várias cidades do <strong>Norte de Minas</strong> para conversar com as pessoas e entender o que mais precisa melhorar na região.
+                    Ele quer escutar quem vive aqui para compreender as prioridades de cada cidade e ajudar a construir soluções.”
                   </p>
                   <p>
-                    "São algumas perguntas bem rápidas. Não vai levar mais do que 10 minutos. 
-                    O senhor topa participar?"
+                    “É rapidinho, dura uns 8 minutinhos. O(a) senhor(a) topa participar?”
                   </p>
                 </div>
 
@@ -464,6 +506,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
               {/* Componente de Pergunta com Checkbox */}
               <CheckboxQuestion
+                key={perguntaAtual.id}
                 campo={perguntaAtual}
                 numeroPergunta={perguntaAtualIndex + 1}
                 totalPerguntas={totalPerguntas}

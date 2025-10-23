@@ -23,4 +23,18 @@ VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui
 # Admin: admin@contavoto.com / admin123
 # Pesquisador: pesquisador@contavoto.com / pesquisador123
 
+# Para o worker de transcrição (rodando no PC)
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=coloque_sua_service_role_key
+OPENAI_API_KEY=coloque_sua_openai_api_key
+STT_PROVIDER=openai
+STT_BATCH_SIZE=3
+STT_LOOP_DELAY_MS=10000
+
+# Para processamento de IA (opcional no worker)
+GEMINI_API_KEY=coloque_sua_gemini_api_key
+# O worker resolve automaticamente o melhor modelo do Gemini (2.5 > 2.0 > 1.5).
+# Não é necessário definir modelo manualmente.
+# (Se você ainda quiser forçar um modelo específico, edite o código do worker.)
+
 

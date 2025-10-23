@@ -1,4 +1,4 @@
-import { Formulario, CampoFormulario } from '../db/localDB';
+import { Formulario } from '../db/localDB';
 
 // ⚠️ VERSÃO DE TESTE - APENAS 4 PERGUNTAS
 export const formularioPortaAPortaModelo: Omit<Formulario, 'id' | 'criadoEm' | 'sincronizado'> = {
