@@ -48,7 +48,7 @@ export const LoginPage: React.FC = () => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">
-            <img src="/logoconta.png" alt="Logo ContaVoto" className="auth-logo-img" />
+            <img src="/Logo_home.png" alt="Logo Opine.ai" className="auth-logo-img" style={{ maxWidth: '100%', width: '100%', maxHeight: '350px', objectFit: 'contain' }} />
           </div>
         </div>
 
@@ -94,7 +94,7 @@ export const LoginPage: React.FC = () => {
         </form>
 
         <div className="auth-footer">
-          <p>Todos os direitos reservados</p>
+          <p>© Todos os direitos reservados</p>
         </div>
       </div>
     </div>
