@@ -32,6 +32,9 @@ export const PermissionsPage: React.FC = () => {
   const [editNome, setEditNome] = useState('');
   const [editTelefone, setEditTelefone] = useState('');
   const [editCandidato, setEditCandidato] = useState('');
+  const [editNovaSenha, setEditNovaSenha] = useState('');
+  const [editSenhaOriginal, setEditSenhaOriginal] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [editFotoFile, setEditFotoFile] = useState<File | null>(null);
   const [editFotoPreview, setEditFotoPreview] = useState<string>('');
 
@@ -98,13 +101,35 @@ export const PermissionsPage: React.FC = () => {
     navigate('/register');
   };
 
-  const handleEditUser = (usuario: Usuario) => {
+  const handleEditUser = async (usuario: Usuario) => {
     setEditingUser(usuario);
     setEditNome(usuario.nome);
     setEditTelefone(usuario.telefone);
     setEditCandidato(usuario.candidato || '');
     setEditFotoPreview(usuario.foto_url || '');
     setEditFotoFile(null);
+    setShowPassword(false);
+    
+    // Buscar senha do usuário
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('senha')
+        .eq('id', usuario.id)
+        .single();
+      
+      if (error) throw error;
+      
+      const senhaAtual = data?.senha || '';
+      console.log('Senha carregada:', senhaAtual);
+      console.log('Dados retornados:', data);
+      setEditSenhaOriginal(senhaAtual);
+      setEditNovaSenha(senhaAtual);
+    } catch (error) {
+      console.error('Erro ao buscar senha:', error);
+      setEditSenhaOriginal('');
+      setEditNovaSenha('');
+    }
   };
 
   const handleEditFotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,9 +200,30 @@ export const PermissionsPage: React.FC = () => {
 
       if (error) throw error;
 
+      // Se a senha foi alterada, atualizar
+      if (editNovaSenha && editNovaSenha.trim() !== '' && editNovaSenha !== editSenhaOriginal) {
+        if (editNovaSenha.length < 6) {
+          alert('A senha deve ter no mínimo 6 caracteres');
+          return;
+        }
+
+        const { error: senhaError } = await supabase
+          .from('usuarios')
+          .update({ senha: editNovaSenha })
+          .eq('id', editingUser.id);
+
+        if (senhaError) {
+          console.error('Erro ao atualizar senha:', senhaError);
+          alert('Dados atualizados, mas erro ao alterar senha');
+        }
+      }
+
       setEditingUser(null);
       setEditFotoFile(null);
       setEditFotoPreview('');
+      setEditNovaSenha('');
+      setEditSenhaOriginal('');
+      setShowPassword(false);
       await carregarUsuarios();
     } catch (error) {
       console.error('Erro ao editar usuário:', error);
@@ -299,42 +345,6 @@ export const PermissionsPage: React.FC = () => {
             Adicionar
           </button>
         </div>
-      </div>
-
-      {/* Opções de Ordenação */}
-      <div style={{ 
-        padding: '1rem', 
-        backgroundColor: 'white',
-        borderBottom: '1px solid #f0f0f0'
-      }}>
-        <span style={{ marginRight: '1rem', color: '#666' }}>Ordenar por:</span>
-        <button
-          onClick={() => setSortBy('status')}
-          className="btn"
-          style={{
-            backgroundColor: sortBy === 'status' ? '#20B2AA' : 'white',
-            color: sortBy === 'status' ? 'white' : '#666',
-            border: '1px solid #ddd',
-            borderRadius: '20px',
-            padding: '0.5rem 1rem',
-            marginRight: '0.5rem'
-          }}
-        >
-          Status
-        </button>
-        <button
-          onClick={() => setSortBy('nome')}
-          className="btn"
-          style={{
-            backgroundColor: sortBy === 'nome' ? '#20B2AA' : 'white',
-            color: sortBy === 'nome' ? 'white' : '#666',
-            border: '1px solid #ddd',
-            borderRadius: '20px',
-            padding: '0.5rem 1rem'
-          }}
-        >
-          Nome
-        </button>
       </div>
 
       {/* Lista de Usuários */}
@@ -491,7 +501,62 @@ export const PermissionsPage: React.FC = () => {
               />
             </div>
 
-            {editingUser.tipo_usuario_id === 1 && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                marginBottom: '6px',
+                color: '#374151'
+              }}>
+                Senha
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={editNovaSenha}
+                  onChange={(e) => setEditNovaSenha(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '40px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '16px'
+                  }}
+                  placeholder="Senha do usuário"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="#6b7280"/>
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#6b7280"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {editingUser.tipo_usuario_id === 1 && false && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ 
                   display: 'block', 
@@ -525,7 +590,8 @@ export const PermissionsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Campo de Foto */}
+            {/* Campo de Foto - OCULTO */}
+            {false && (
             <div style={{ marginBottom: '16px' }}>
               <label style={{ 
                 display: 'block', 
@@ -601,6 +667,7 @@ export const PermissionsPage: React.FC = () => {
                 JPG, PNG ou WebP • Máximo 5MB
               </p>
             </div>
+            )}
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button

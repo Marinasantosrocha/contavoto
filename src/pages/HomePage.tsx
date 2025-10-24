@@ -373,43 +373,31 @@ export const HomePage = ({
             <h1 className="header-title">Olá, {nomeEntrevistador}</h1>
           </div>
           <div className="header-actions">
-            {/* Avatar do Usuário */}
+            {/* Ícone de Logout */}
             <div 
-              className="user-avatar" 
               onClick={handleGoToSettings}
               style={{ 
-                cursor: 'pointer'
+                cursor: 'pointer',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              {user.foto_url ? (
-                <img 
-                  src={user.foto_url} 
-                  alt={nomeEntrevistador}
-                  style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: '2px solid #20B2AA'
-                  }}
-                />
-              ) : (
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  backgroundColor: '#20B2AA',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  fontSize: '16px',
-                  border: '2px solid #20B2AA'
-                }}>
-                  {nomeEntrevistador.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <svg 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none"
+                stroke="#000000"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
             </div>
           </div>
         </div>
