@@ -613,6 +613,7 @@ export const HomePage = ({
         <BottomNav 
           onNavigatePesquisas={onVerPesquisas}
           onNavigateDashboard={onNavigateToDashboard}
+          onNavigatePermissions={_onNavigateToPermissions}
         />
       )}
     </div>

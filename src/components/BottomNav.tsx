@@ -4,15 +4,21 @@ interface BottomNavProps {
   onNavigateHome?: () => void;
   onNavigatePesquisas?: () => void;
   onNavigateDashboard?: () => void;
+  onNavigatePermissions?: () => void;
 }
 
 export const BottomNav = ({ 
   onNavigateHome, 
   onNavigatePesquisas,
-  onNavigateDashboard
+  onNavigateDashboard,
+  onNavigatePermissions
 }: BottomNavProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Verificar se é super admin
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isSuperAdmin = user.tipo_usuario_id === 5 || user.tipo === 5;
 
   const handleHome = () => {
     if (onNavigateHome) {
@@ -38,6 +44,14 @@ export const BottomNav = ({
     }
   };
 
+  const handlePermissions = () => {
+    if (onNavigatePermissions) {
+      onNavigatePermissions();
+    } else {
+      navigate('/permissions');
+    }
+  };
+
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';
@@ -59,6 +73,22 @@ export const BottomNav = ({
           </div>
           <div className="nav-label">Home</div>
         </div>
+
+        {/* Usuários apenas para super admin */}
+        {isSuperAdmin && (
+          <div 
+            className={`nav-item ${isActive('/permissions') ? 'active' : ''}`}
+            onClick={handlePermissions}
+          >
+            <div className="nav-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            </div>
+            <div className="nav-label">Usuários</div>
+          </div>
+        )}
+        
         <div 
           className={`nav-item ${isActive('/pesquisa') ? 'active' : ''}`}
           onClick={handlePesquisas}
