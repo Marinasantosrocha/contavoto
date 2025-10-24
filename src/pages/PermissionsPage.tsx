@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { trocarFotoUsuario } from '../services/storageService';
+import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
 
 interface TipoUsuario {
@@ -31,6 +32,9 @@ export const PermissionsPage: React.FC = () => {
   const [editNome, setEditNome] = useState('');
   const [editTelefone, setEditTelefone] = useState('');
   const [editCandidato, setEditCandidato] = useState('');
+  const [editNovaSenha, setEditNovaSenha] = useState('');
+  const [editSenhaOriginal, setEditSenhaOriginal] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [editFotoFile, setEditFotoFile] = useState<File | null>(null);
   const [editFotoPreview, setEditFotoPreview] = useState<string>('');
 
@@ -97,13 +101,35 @@ export const PermissionsPage: React.FC = () => {
     navigate('/register');
   };
 
-  const handleEditUser = (usuario: Usuario) => {
+  const handleEditUser = async (usuario: Usuario) => {
     setEditingUser(usuario);
     setEditNome(usuario.nome);
     setEditTelefone(usuario.telefone);
     setEditCandidato(usuario.candidato || '');
     setEditFotoPreview(usuario.foto_url || '');
     setEditFotoFile(null);
+    setShowPassword(false);
+    
+    // Buscar senha do usuário
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('senha')
+        .eq('id', usuario.id)
+        .single();
+      
+      if (error) throw error;
+      
+      const senhaAtual = data?.senha || '';
+      console.log('Senha carregada:', senhaAtual);
+      console.log('Dados retornados:', data);
+      setEditSenhaOriginal(senhaAtual);
+      setEditNovaSenha(senhaAtual);
+    } catch (error) {
+      console.error('Erro ao buscar senha:', error);
+      setEditSenhaOriginal('');
+      setEditNovaSenha('');
+    }
   };
 
   const handleEditFotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,9 +200,30 @@ export const PermissionsPage: React.FC = () => {
 
       if (error) throw error;
 
+      // Se a senha foi alterada, atualizar
+      if (editNovaSenha && editNovaSenha.trim() !== '' && editNovaSenha !== editSenhaOriginal) {
+        if (editNovaSenha.length < 6) {
+          alert('A senha deve ter no mínimo 6 caracteres');
+          return;
+        }
+
+        const { error: senhaError } = await supabase
+          .from('usuarios')
+          .update({ senha: editNovaSenha })
+          .eq('id', editingUser.id);
+
+        if (senhaError) {
+          console.error('Erro ao atualizar senha:', senhaError);
+          alert('Dados atualizados, mas erro ao alterar senha');
+        }
+      }
+
       setEditingUser(null);
       setEditFotoFile(null);
       setEditFotoPreview('');
+      setEditNovaSenha('');
+      setEditSenhaOriginal('');
+      setShowPassword(false);
       await carregarUsuarios();
     } catch (error) {
       console.error('Erro ao editar usuário:', error);
@@ -298,42 +345,6 @@ export const PermissionsPage: React.FC = () => {
             Adicionar
           </button>
         </div>
-      </div>
-
-      {/* Opções de Ordenação */}
-      <div style={{ 
-        padding: '1rem', 
-        backgroundColor: 'white',
-        borderBottom: '1px solid #f0f0f0'
-      }}>
-        <span style={{ marginRight: '1rem', color: '#666' }}>Ordenar por:</span>
-        <button
-          onClick={() => setSortBy('status')}
-          className="btn"
-          style={{
-            backgroundColor: sortBy === 'status' ? '#20B2AA' : 'white',
-            color: sortBy === 'status' ? 'white' : '#666',
-            border: '1px solid #ddd',
-            borderRadius: '20px',
-            padding: '0.5rem 1rem',
-            marginRight: '0.5rem'
-          }}
-        >
-          Status
-        </button>
-        <button
-          onClick={() => setSortBy('nome')}
-          className="btn"
-          style={{
-            backgroundColor: sortBy === 'nome' ? '#20B2AA' : 'white',
-            color: sortBy === 'nome' ? 'white' : '#666',
-            border: '1px solid #ddd',
-            borderRadius: '20px',
-            padding: '0.5rem 1rem'
-          }}
-        >
-          Nome
-        </button>
       </div>
 
       {/* Lista de Usuários */}
@@ -490,7 +501,62 @@ export const PermissionsPage: React.FC = () => {
               />
             </div>
 
-            {editingUser.tipo_usuario_id === 1 && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                marginBottom: '6px',
+                color: '#374151'
+              }}>
+                Senha
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={editNovaSenha}
+                  onChange={(e) => setEditNovaSenha(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '40px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '16px'
+                  }}
+                  placeholder="Senha do usuário"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="#6b7280"/>
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#6b7280"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {editingUser.tipo_usuario_id === 1 && false && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ 
                   display: 'block', 
@@ -524,7 +590,8 @@ export const PermissionsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Campo de Foto */}
+            {/* Campo de Foto - OCULTO */}
+            {false && (
             <div style={{ marginBottom: '16px' }}>
               <label style={{ 
                 display: 'block', 
@@ -600,6 +667,7 @@ export const PermissionsPage: React.FC = () => {
                 JPG, PNG ou WebP • Máximo 5MB
               </p>
             </div>
+            )}
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button
@@ -637,42 +705,7 @@ export const PermissionsPage: React.FC = () => {
       )}
 
       {/* Navegação Inferior */}
-      <nav className="bottom-nav">
-        <div className="bottom-nav-content">
-          <div className="nav-item" onClick={() => navigate('/')}>
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Home</div>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Pesquisas</div>
-          </div>
-          <div className="nav-item active">
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 7H16c-.8 0-1.54.37-2.01 1.01L12 10.5l-1.99-2.49A2.5 2.5 0 0 0 8 7H5.46c-.8 0-1.52.57-1.42 1.37L6.5 16H9v6h2v-6h2v6h2z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Usuários</div>
-          </div>
-          <div className="nav-item" onClick={() => navigate('/configuracoes')}>
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Config</div>
-          </div>
-        </div>
-      </nav>
+      <BottomNav />
     </div>
   );
 };

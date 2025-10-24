@@ -3,6 +3,7 @@ import { useEstatisticasPesquisas, usePesquisas, usePesquisadores } from '../hoo
 import { useFormularios } from '../hooks/useFormularios';
 import { useRfbAnalytics } from '../hooks/useRfbAnalytics';
 import { useRfbTimeseries } from '../hooks/useRfbTimeseries';
+import { useProdutividade } from '../hooks/useProdutividade';
 import { RFB_FIELDS, getFieldLabel, orderEntries } from '../data/rfbMappings';
 import { BottomNav } from '../components/BottomNav';
 import { ChartCard } from '../components/ChartCard';
@@ -45,6 +46,7 @@ export const DashboardPage = ({
   const { data: pesquisas = [] } = usePesquisas();
   const { data: pesquisadores = [] } = usePesquisadores();
   const { data: formularios = [] } = useFormularios();
+  const { data: produtividade = [] } = useProdutividade();
 
   // Filtrar pesquisas por pesquisador (se for pesquisador logado, apenas suas pesquisas)
   const pesquisasPorPesquisador = pesquisas.filter(p => {
@@ -473,32 +475,124 @@ export const DashboardPage = ({
           </div>
         )}
 
-        {/* Estatísticas Gerais (Sempre visível) */}
+        {/* Produtividade dos Pesquisadores */}
         <div className="page-section">
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Estatísticas Gerais (Todos os Tempos)</h3>
-            </div>
+          <ChartCard 
+            title="Produtividade dos Pesquisadores" 
+            subtitle="Tempo médio de entrevista e intervalo entre entrevistas"
+          >
+            {produtividade && produtividade.length > 0 ? (
+              <div style={{ marginTop: '1rem' }}>
+                {produtividade.map((item) => (
+                  <div key={item.entrevistador} style={{ marginBottom: '2rem' }}>
+                    <h4 style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600', 
+                      color: '#1f2937',
+                      marginBottom: '0.75rem'
+                    }}>
+                      {item.entrevistador} ({item.total_entrevistas} entrevistas)
+                    </h4>
+                    
+                    {/* Duração Média */}
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        marginBottom: '0.25rem',
+                        fontSize: '14px'
+                      }}>
+                        <span style={{ color: '#6b7280' }}>Duração média da entrevista</span>
+                        <span style={{ fontWeight: '600', color: '#20B2AA' }}>
+                          {item.duracao_media_minutos?.toFixed(1) || '0'} min
+                        </span>
+                      </div>
+                      <div style={{ 
+                        width: '100%', 
+                        height: '24px', 
+                        backgroundColor: '#f3f4f6', 
+                        borderRadius: '6px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{ 
+                          width: `${Math.min((item.duracao_media_minutos / 30) * 100, 100)}%`, 
+                          height: '100%', 
+                          backgroundColor: '#20B2AA',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          paddingRight: '8px',
+                          color: 'white',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {item.duracao_media_minutos > 5 && `${item.duracao_media_minutos.toFixed(1)}m`}
+                        </div>
+                      </div>
+                    </div>
 
-            <div className="stats-list">
-              <div className="stats-list-item">
-                <span className="stats-list-label">Total de Pesquisas:</span>
-                <span className="stats-list-value">{estatisticas?.total || 0}</span>
+                    {/* Intervalo Médio */}
+                    {item.intervalo_medio_minutos && (
+                      <div>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          marginBottom: '0.25rem',
+                          fontSize: '14px'
+                        }}>
+                          <span style={{ color: '#6b7280' }}>Intervalo médio entre entrevistas</span>
+                          <span style={{ fontWeight: '600', color: '#3b82f6' }}>
+                            {item.intervalo_medio_minutos.toFixed(1)} min
+                          </span>
+                        </div>
+                        <div style={{ 
+                          width: '100%', 
+                          height: '24px', 
+                          backgroundColor: '#f3f4f6', 
+                          borderRadius: '6px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{ 
+                            width: `${Math.min((item.intervalo_medio_minutos / 30) * 100, 100)}%`, 
+                            height: '100%', 
+                            backgroundColor: '#3b82f6',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            paddingRight: '8px',
+                            color: 'white',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            {item.intervalo_medio_minutos > 5 && `${item.intervalo_medio_minutos.toFixed(1)}m`}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                <div style={{ 
+                  marginTop: '1.5rem', 
+                  padding: '1rem', 
+                  backgroundColor: '#f9fafb', 
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: '#6b7280'
+                }}>
+                  <strong>Nota:</strong> Intervalos maiores que 60 minutos (horário de almoço) não são considerados no cálculo.
+                </div>
               </div>
-              <div className="stats-list-item">
-                <span className="stats-list-label">Finalizadas:</span>
-                <span className="stats-list-value">{estatisticas?.finalizadas || 0}</span>
+            ) : (
+              <div style={{ 
+                padding: '2rem', 
+                textAlign: 'center', 
+                color: '#6b7280' 
+              }}>
+                Nenhum dado de produtividade disponível
               </div>
-              <div className="stats-list-item">
-                <span className="stats-list-label">Em Andamento:</span>
-                <span className="stats-list-value">{estatisticas?.emAndamento || 0}</span>
-              </div>
-              <div className="stats-list-item">
-                <span className="stats-list-label">Não Sincronizadas:</span>
-                <span className="stats-list-value">{estatisticas?.naoSincronizadas || 0}</span>
-              </div>
-            </div>
-          </div>
+            )}
+          </ChartCard>
         </div>
       </main>
 

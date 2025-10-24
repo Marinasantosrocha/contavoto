@@ -1,6 +1,6 @@
 {
-  "name": "ContaVoto - Sistema de Pesquisa de Campo",
-  "short_name": "ContaVoto",
+  "name": "Opine.ai - Sistema de Pesquisa de Campo",
+  "short_name": "Opine.ai",
   "description": "Sistema de pesquisa de campo porta a porta que funciona offline",
   "start_url": "/?source=pwa",
   "id": "/",
@@ -13,7 +13,7 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/logoconta.png",
+      "src": "/logo.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any maskable"

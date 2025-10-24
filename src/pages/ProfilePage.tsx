@@ -65,124 +65,60 @@ export function ProfilePage({ onLogout }: ProfilePageProps) {
 
   return (
     <div className="app-container">
-      <header className="modern-header">
+      <header className="modern-header home-header">
         <div className="header-content">
           <div className="header-left">
-            <button 
+            <svg 
               onClick={handleGoBack}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '1.5rem',
+              width="32" 
+              height="32" 
+              viewBox="0 0 24 24" 
+              fill="none"
+              style={{ 
+                marginRight: '12px',
                 cursor: 'pointer',
-                padding: '0.5rem',
-                color: '#333'
+                flexShrink: 0
               }}
             >
-              ←
-            </button>
-            <h1 className="header-title">Meu Perfil</h1>
+              <path 
+                d="M15 18L9 12L15 6" 
+                stroke="#20B2AA" 
+                strokeWidth="3" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+            </svg>
+            <h1 className="header-title">Perfil</h1>
           </div>
         </div>
       </header>
 
       <main className="main-content">
-        <div className="page-section">
-          {/* Informações do Usuário */}
-          <div style={{
-            maxWidth: '500px',
-            margin: '0 auto',
-            padding: '0 1rem'
-          }}>
-            <div className="info-card" style={{
-              backgroundColor: '#f8f9fa',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              marginBottom: '1rem'
-            }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.9rem',
-                  color: '#666',
-                  marginBottom: '0.5rem',
-                  fontWeight: '500'
-                }}>
-                  Nome
-                </label>
-                <p style={{
-                  fontSize: '1.1rem',
-                  color: '#333',
-                  fontWeight: '600',
-                  margin: 0
-                }}>
-                  {user.nome}
-                </p>
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.9rem',
-                  color: '#666',
-                  marginBottom: '0.5rem',
-                  fontWeight: '500'
-                }}>
-                  Telefone
-                </label>
-                <p style={{
-                  fontSize: '1.1rem',
-                  color: '#333',
-                  fontWeight: '600',
-                  margin: 0
-                }}>
-                  {user.telefone}
-                </p>
-              </div>
-
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.9rem',
-                  color: '#666',
-                  marginBottom: '0.5rem',
-                  fontWeight: '500'
-                }}>
-                  Tipo de Usuário
-                </label>
-                <p style={{
-                  fontSize: '1.1rem',
-                  color: '#333',
-                  fontWeight: '600',
-                  margin: 0
-                }}>
-                  {getTipoUsuarioText(user.tipo)}
-                </p>
-              </div>
-            </div>
-
-            {/* Botão de Logout */}
-            <button
-              onClick={handleLogout}
-              style={{
-                width: '100%',
-                padding: '1rem',
-                fontSize: '1rem',
-                fontWeight: '600',
-                marginTop: '1rem',
-                backgroundColor: '#ff6b6b',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ff5252'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff6b6b'}
-            >
-              Sair da Conta
-            </button>
-          </div>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              padding: '0.75rem 1.5rem',
+              fontSize: '1rem',
+              fontWeight: '600',
+              backgroundColor: '#ff6b6b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ff5252'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff6b6b'}
+          >
+            Sair da Conta
+          </button>
         </div>
       </main>
     </div>

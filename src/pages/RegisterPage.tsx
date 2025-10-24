@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { trocarFotoUsuario } from '../services/storageService';
 import '../styles/design-system.css';
 
 interface TipoUsuario {
@@ -19,61 +18,16 @@ export const RegisterPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [tipoUsuario, setTipoUsuario] = useState<number | null>(null);
   const [candidato, setCandidato] = useState('');
-  const [fotoFile, setFotoFile] = useState<File | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string>('');
-  const [tiposUsuarios, setTiposUsuarios] = useState<TipoUsuario[]>([]);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    carregarTiposUsuarios();
-  }, []);
 
-  const carregarTiposUsuarios = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tipos_usuarios')
-        .select('*')
-        .order('nivel_permissao');
-
-      if (error) throw error;
-      setTiposUsuarios(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar tipos de usuários:', error);
-    }
-  };
-
-  const handleFotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validar tipo
-      const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      if (!tiposPermitidos.includes(file.type)) {
-        setError('Tipo de arquivo não permitido. Use JPG, PNG ou WebP.');
-        return;
-      }
-
-      // Validar tamanho (máximo 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Arquivo muito grande. Tamanho máximo: 5MB.');
-        return;
-      }
-
-      setFotoFile(file);
-      
-      // Criar preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      setError('');
-    }
-  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setIsLoading(true);
 
     if (password !== confirmPassword) {
@@ -105,41 +59,22 @@ export const RegisterPage: React.FC = () => {
         usuarioData.candidato = candidato;
       }
 
-      const { data: usuarioCriado, error: usuarioError } = await supabase
+      const { error: usuarioError } = await supabase
         .from('usuarios')
-        .insert(usuarioData)
-        .select()
-        .single();
+        .insert(usuarioData);
 
       if (usuarioError) throw usuarioError;
 
-      // Se tiver foto, fazer upload
-      let fotoUrl = null;
-      if (fotoFile) {
-        const resultadoFoto = await trocarFotoUsuario(fotoFile, usuarioCriado.id);
-        if (resultadoFoto.sucesso) {
-          fotoUrl = resultadoFoto.url;
-        } else {
-          console.error('Erro ao fazer upload da foto:', resultadoFoto.erro);
-        }
-      }
-
-      // Salvar no localStorage para login automático
-      const userData = {
-        id: usuarioCriado.id,
-        nome: usuarioCriado.nome,
-        telefone: usuarioCriado.telefone,
-        tipo_usuario_id: usuarioCriado.tipo_usuario_id,
-        ativo: usuarioCriado.ativo,
-        candidato: usuarioCriado.candidato,
-        foto_url: fotoUrl || undefined
-      };
+      // Mostrar mensagem de sucesso
+      setSuccessMessage('Usuário criado com sucesso!');
       
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('usuario', JSON.stringify(userData));
-      
-      alert('Usuário criado com sucesso!');
-      navigate('/');
+      // Limpar formulário
+      setNome('');
+      setTelefone('');
+      setPassword('');
+      setConfirmPassword('');
+      setTipoUsuario(null);
+      setCandidato('');
     } catch (error: any) {
       console.error('Erro no registro:', error);
       setError(error.message || 'Erro ao criar conta. Tente novamente.');
@@ -155,7 +90,7 @@ export const RegisterPage: React.FC = () => {
         <div className="header-content">
           <div className="header-left">
             <svg 
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/permissions')}
               width="32" 
               height="32" 
               viewBox="0 0 24 24" 
@@ -185,13 +120,13 @@ export const RegisterPage: React.FC = () => {
           <div className="card">
             <form onSubmit={handleRegister} className="auth-form">
               <div className="form-group">
-                <label className="form-label">Nome Completo *</label>
+                <label className="form-label">Nome *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  placeholder="Digite seu nome completo"
+                  placeholder="Digite seu nome"
                   required
                 />
               </div>
@@ -221,7 +156,7 @@ export const RegisterPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Confirmar Senha *</label>
+                <label className="form-label">Confirmar senha *</label>
                 <input
                   type="password"
                   className="form-input"
@@ -233,7 +168,7 @@ export const RegisterPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Tipo de Usuário *</label>
+                <label className="form-label">Tipo de usuário *</label>
                 <select
                   className="form-select"
                   value={tipoUsuario || ''}
@@ -241,11 +176,8 @@ export const RegisterPage: React.FC = () => {
                   required
                 >
                   <option value="">Selecione o tipo de usuário...</option>
-                  {tiposUsuarios.map((tipo) => (
-                    <option key={tipo.id} value={tipo.id}>
-                      {tipo.nome.toUpperCase()} - {tipo.descricao}
-                    </option>
-                  ))}
+                  <option value="1">Pesquisador</option>
+                  <option value="5">Superadmin</option>
                 </select>
               </div>
 
@@ -267,129 +199,49 @@ export const RegisterPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Campo de Foto */}
-              <div className="form-group">
-                <label className="form-label">Foto de Perfil (opcional)</label>
-                
-                {fotoPreview && (
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    marginBottom: '16px' 
-                  }}>
-                    <img 
-                      src={fotoPreview} 
-                      alt="Preview"
-                      style={{ 
-                        width: '120px', 
-                        height: '120px', 
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '3px solid #20B2AA'
-                      }}
-                    />
-                  </div>
-                )}
-                
-                <label 
-                  htmlFor="foto-upload" 
-                  className="btn btn-secondary w-full"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <svg 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none"
-                    style={{ marginRight: '8px', display: 'inline-block', verticalAlign: 'middle' }}
-                  >
-                    <path 
-                      d="M12 5C8.68629 5 6 7.68629 6 11C6 14.3137 8.68629 17 12 17C15.3137 17 18 14.3137 18 11C18 7.68629 15.3137 5 12 5ZM12 15C9.79086 15 8 13.2091 8 11C8 8.79086 9.79086 7 12 7C14.2091 7 16 8.79086 16 11C16 13.2091 14.2091 15 12 15Z" 
-                      fill="#6b7280"
-                    />
-                    <path 
-                      d="M4 20H20V22H4V20Z" 
-                      fill="#6b7280"
-                    />
-                  </svg>
-                  {fotoPreview ? 'Alterar Foto' : 'Selecionar Foto'}
-                </label>
-                <input
-                  id="foto-upload"
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={handleFotoChange}
-                  style={{ display: 'none' }}
-                />
-                <small style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
-                  JPG, PNG ou WebP • Máximo 5MB
-                </small>
-              </div>
-
               {error && (
                 <div className="status-badge offline mt-3">
                   {error}
                 </div>
               )}
 
+              {successMessage && (
+                <div style={{
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  padding: '1rem',
+                  borderRadius: '6px',
+                  marginTop: '1rem',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {successMessage}
+                </div>
+              )}
+
               <button 
                 type="submit" 
-                className="btn btn-primary btn-large w-full mt-4"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  marginTop: '1rem',
+                  backgroundColor: '#20B2AA',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  opacity: isLoading ? 0.7 : 1
+                }}
                 disabled={isLoading}
               >
-                {isLoading ? '⏳ Criando Conta...' : '✅ Criar Conta'}
+                {isLoading ? 'Criando conta...' : 'Criar conta'}
               </button>
             </form>
-
-            <div className="text-center mt-4">
-              <p>
-                Já tem uma conta? 
-                <a href="/login" className="btn btn-ghost btn-small ml-2">
-                  Fazer Login
-                </a>
-              </p>
-            </div>
           </div>
         </div>
       </main>
-
-      {/* Navegação Inferior */}
-      <nav className="bottom-nav">
-        <div className="bottom-nav-content">
-          <div className="nav-item">
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Home</div>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Pesquisas</div>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 7H16c-.8 0-1.54.37-2.01 1.01L12 10.5l-1.99-2.49A2.5 2.5 0 0 0 8 7H5.46c-.8 0-1.52.57-1.42 1.37L6.5 16H9v6h2v-6h2v6h2z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Usuários</div>
-          </div>
-          <div className="nav-item">
-            <div className="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-              </svg>
-            </div>
-            <div className="nav-label">Config</div>
-          </div>
-        </div>
-      </nav>
     </div>
   );
 };
