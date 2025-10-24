@@ -71,9 +71,21 @@ export default function CheckboxQuestion({
         {/* Mostrar opções se houver (radio, checkbox, select) */}
         {campo.opcoes && campo.opcoes.length > 0 && (
           <div className="question-options">
-            <ul className="options-list">
+            <ul className="options-list" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(4, 1fr)', 
+              gap: '0.75rem',
+              listStyle: 'none',
+              padding: 0
+            }}>
               {campo.opcoes.map((opcao, index) => (
-                <li key={index} className="option-item">
+                <li key={index} className="option-item" style={{
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '0.5rem',
+                  textAlign: 'center',
+                  fontSize: '0.9rem'
+                }}>
                   {opcao}
                 </li>
               ))}
