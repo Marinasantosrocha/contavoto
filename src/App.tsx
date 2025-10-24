@@ -13,6 +13,7 @@ import { PermissionsPage } from './pages/PermissionsPage';
 import { ConfiguracoesPage } from './pages/ConfiguracoesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TranscricoesPage } from './pages/TranscricoesPage';
+import { ProfilePage } from './pages/ProfilePage';
 // import { useInicializarFormulario } from './hooks/useFormularios'; // Deprecado: formulários só via Supabase
 import { usePWA } from './hooks/usePWA';
 import AutoSync from './components/AutoSync';
@@ -99,6 +100,11 @@ function AppContent() {
             <Route path="/settings" element={
               <ProtectedRoute>
                 <SettingsPageWrapper />
+              </ProtectedRoute>
+            } />
+            <Route path="/perfil" element={
+              <ProtectedRoute>
+                <ProfilePageWrapper />
               </ProtectedRoute>
             } />
         
@@ -204,6 +210,13 @@ function TranscricoesPageWrapper() {
   }
   return (
     <TranscricoesPage onVoltar={() => navigate('/')} />
+  );
+}
+
+function ProfilePageWrapper() {
+  const navigate = useNavigate();
+  return (
+    <ProfilePage onLogout={() => navigate('/login')} />
   );
 }
 
