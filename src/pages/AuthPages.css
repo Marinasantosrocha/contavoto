@@ -82,8 +82,8 @@
   font-weight: 600;
   margin-bottom: 8px;
   font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .auth-form .input-text {

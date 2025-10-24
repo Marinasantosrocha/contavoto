@@ -418,6 +418,29 @@ export const HomePage = ({
 
       {/* Conteúdo Principal */}
       <main className="main-content">
+        {/* Saudação para Super Admin */}
+        {isSuperAdmin && (
+          <div className="page-section" style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minHeight: '120px',
+            padding: '2rem 1rem'
+          }}>
+            <p style={{ 
+              fontSize: '1.5rem', 
+              fontWeight: '600', 
+              color: '#000000',
+              textAlign: 'center',
+              maxWidth: '600px',
+              lineHeight: '1.6',
+              margin: 0
+            }}>
+              Bem-vindo, Admin!
+            </p>
+          </div>
+        )}
+
         {/* Seção de Saudação para Pesquisadores */}
         {isPesquisador && !mostrarFormulario && (
           <div className="page-section" style={{ 
@@ -442,8 +465,8 @@ export const HomePage = ({
           </div>
         )}
 
-        {/* Seção de Estatísticas - Apenas para NÃO Pesquisadores */}
-        {!isPesquisador && (
+        {/* Seção de Estatísticas - Apenas para NÃO Pesquisadores e NÃO SuperAdmin */}
+        {!isPesquisador && !isSuperAdmin && (
           <div className="page-section">
             <div className="stats-grid">
               <div className="stat-card">
@@ -579,29 +602,16 @@ export const HomePage = ({
         )}
 
         {/* Mensagem para usuários não-pesquisadores */}
-        {!isPesquisador && (
+        {!isPesquisador && !isSuperAdmin && (
           <div className="page-section">
             <div className="card">
               <div className="card-header">
                 <h2 className="card-title">👋 Bem-vindo, {nomeEntrevistador}!</h2>
                 <p className="card-subtitle">
-                  {tipoUsuarioId === 5 && 'Super Administrador - Acesso total ao sistema'}
                   {tipoUsuarioId === 4 && 'Administrador - Gerenciamento completo'}
                   {tipoUsuarioId === 3 && 'Suporte Técnico - Acesso limitado'}
                   {tipoUsuarioId === 2 && 'Candidato - Visualização de dados'}
                 </p>
-              </div>
-              <div className="text-center" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-                <button className="btn" onClick={executarSincronizacao} disabled={syncing || !navigator.onLine}>
-                  {syncing ? 'Sincronizando...' : 'Sincronizar agora'}
-                </button>
-                <p className="muted" style={{ margin: 0 }}>Processa uploads pendentes e atualiza dados.</p>
-                {isSuperAdmin && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="badge">Pendências de transcrição: {pendenciasCount ?? '—'}</span>
-                    <button className="btn btn-ghost" onClick={() => navigate('/transcricoes')}>Abrir fila</button>
-                  </div>
-                )}
               </div>
             </div>
           </div>

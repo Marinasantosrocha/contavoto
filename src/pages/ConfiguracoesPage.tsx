@@ -282,20 +282,6 @@ export const ConfiguracoesPage: React.FC = () => {
               <div className="list-item">
                 <div className="list-item-icon">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="#6b7280">
-                    <path d="M12 6V3L8 7L12 11V8C15.31 8 18 10.69 18 14C18 15.01 17.75 15.97 17.3 16.8L18.76 18.26C19.54 17.03 20 15.57 20 14C20 9.58 16.42 6 12 6M6.7 7.2L5.24 5.74C4.46 6.97 4 8.43 4 10C4 14.42 7.58 18 12 18V21L16 17L12 13V16C8.69 16 6 13.31 6 10C6 8.99 6.25 8.03 6.7 7.2Z"/>
-                  </svg>
-                </div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Sincronizar agora</div>
-                  <div className="list-item-subtitle">Processa uploads pendentes e atualiza dados</div>
-                </div>
-                <button className="btn" onClick={executarSincronizacao} disabled={syncing || !navigator.onLine}>
-                  {syncing ? 'Sincronizando...' : 'Executar'}
-                </button>
-              </div>
-              <div className="list-item">
-                <div className="list-item-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#6b7280">
                     <path d="M12 4V1L8 5L12 9V6C15.31 6 18 8.69 18 12C18 13.01 17.75 13.97 17.3 14.8L18.76 16.26C19.54 15.03 20 13.57 20 12C20 7.58 16.42 4 12 4M12 18C8.69 18 6 15.31 6 12C6 10.99 6.25 10.03 6.7 9.2L5.24 7.74C4.46 8.97 4 10.43 4 12C4 16.42 7.58 20 12 20V23L16 19L12 15V18Z"/>
                   </svg>
                 </div>

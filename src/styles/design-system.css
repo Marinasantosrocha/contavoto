@@ -7,6 +7,7 @@
    ========================================== */
 :root {
   /* Cores Principais */
+  --primary-color: #20B2AA;
   --primary-teal: #20B2AA;
   --primary-teal-dark: #1A9B94;
   --primary-yellow: #FFD700;
@@ -640,31 +641,29 @@ body {
 }
 
 .nav-item:hover {
-  background-color: var(--light-gray);
+  background-color: transparent;
   color: var(--gray);
 }
 
 .nav-item.active {
-  background-color: rgba(108, 117, 125, 0.1);
-  color: var(--dark-gray);
+  background-color: transparent;
+  color: var(--gray);
 }
 
 .nav-icon {
   font-size: var(--font-size-xl);
-  transition: transform 0.2s ease;
-  filter: grayscale(100%);
-  opacity: 0.7;
+  transition: all 0.2s ease;
+  color: var(--gray);
 }
 
 .nav-item:hover .nav-icon {
   transform: scale(1.05);
-  opacity: 0.9;
+  color: var(--gray);
 }
 
 .nav-item.active .nav-icon {
   transform: scale(1.05);
-  opacity: 1;
-  filter: grayscale(0%);
+  color: var(--primary-color);
 }
 
 .nav-label {
