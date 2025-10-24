@@ -87,26 +87,29 @@
 }
 
 /* ===================================
-   MODAL DE MOTIVOS DE RECUSA
+   MODAL DE MOTIVOS DE RECUSA - FULLSCREEN
    ================================== */
 
-.aceite-container {
+.aceite-container-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 2rem;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 60vh;
-  padding: 1.5rem;
 }
 
-.aceite-card {
-  background: white;
-  border-radius: 0.75rem;
-  padding: 2rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
+.aceite-card-recusa {
   width: 100%;
+  max-width: 900px;
   text-align: center;
-  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .aceite-icon {
@@ -123,43 +126,48 @@
 }
 
 .aceite-titulo {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 600;
   color: #343A40;
   margin-bottom: 1rem;
 }
 
 .aceite-descricao {
-  font-size: 1rem;
+  font-size: 1.125rem;
   color: #6C757D;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
-.motivos-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin: 2rem 0;
+/* Grid de 3 colunas para motivos de recusa */
+.motivos-grid-tres-colunas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 2rem 0 2.5rem;
 }
 
 .motivo-btn {
   width: 100%;
-  padding: 1rem;
+  padding: 1.25rem 1rem;
   background: white;
   color: #343A40;
   border: 2px solid #E9ECEF;
   border-radius: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  text-align: left;
+  text-align: center;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .motivo-btn:hover {
   border-color: #20B2AA;
   background: rgba(32, 178, 170, 0.05);
-  transform: translateX(4px);
+  transform: scale(1.02);
 }
 
 .motivo-btn.selecionado {
@@ -173,16 +181,20 @@
   display: flex;
   gap: 1rem;
   margin-top: 2rem;
+  justify-content: center;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .btn-voltar {
   flex: 1;
-  padding: 0.875rem 1.5rem;
+  padding: 1rem 2rem;
   background: white;
   color: #6C757D;
   border: 2px solid #E9ECEF;
   border-radius: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -195,12 +207,12 @@
 
 .btn-salvar-recusa {
   flex: 2;
-  padding: 0.875rem 1.5rem;
+  padding: 1rem 2rem;
   background-color: #DC3545;
   color: white;
   border: none;
   border-radius: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -214,6 +226,13 @@
 .btn-salvar-recusa:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Responsivo para tablets e mobile */
+@media (max-width: 768px) {
+  .motivos-grid-tres-colunas {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* Responsivo */
@@ -232,22 +251,36 @@
     width: 100%;
   }
 
-  .aceite-card {
+  .aceite-container-fullscreen {
     padding: 1.5rem;
   }
 
-  .aceite-icon {
-    width: 64px;
-    height: 64px;
-    font-size: 36px;
+  .aceite-card-recusa {
+    max-width: 100%;
   }
 
   .aceite-titulo {
     font-size: 1.25rem;
   }
 
+  .aceite-descricao {
+    font-size: 1rem;
+  }
+
+  .motivos-grid-tres-colunas {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .motivo-btn {
+    min-height: 60px;
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+
   .aceite-acoes {
     flex-direction: column;
+    max-width: 100%;
   }
 
   .btn-voltar,

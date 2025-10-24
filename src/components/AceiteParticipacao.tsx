@@ -12,7 +12,6 @@ const MOTIVOS_RECUSA = [
   'Ausente',
   'Sem tempo',
   'Não gosta de pesquisas',
-  'Não mora aqui',
   'Não conhece o candidato',
   'Não quer se identificar',
   'Outro motivo'
@@ -42,19 +41,11 @@ export default function AceiteParticipacao({
 
   if (mostrarMotivos) {
     return (
-      <div className="aceite-container">
-        <div className="aceite-card">
-          <div className="aceite-icon recusa">
-            <span>✗</span>
-          </div>
-          
+      <div className="aceite-container-fullscreen">
+        <div className="aceite-card-recusa">
           <h2 className="aceite-titulo">Por que a pessoa recusou?</h2>
-          
-          <p className="aceite-descricao">
-            Registre o motivo da recusa para ajudar nas estatísticas
-          </p>
 
-          <div className="motivos-grid">
+          <div className="motivos-grid-tres-colunas">
             {MOTIVOS_RECUSA.map((opcao) => (
               <button
                 key={opcao}

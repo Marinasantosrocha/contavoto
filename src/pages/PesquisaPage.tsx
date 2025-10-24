@@ -30,7 +30,6 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   // Estados locais
   const [respostas, setRespostas] = useState<{ [key: string]: any }>({});
   const [mostrarEncerramento, setMostrarEncerramento] = useState(false);
-  const [parteEncerramento, setParteEncerramento] = useState(1);
   const [aceitouParticipar, setAceitouParticipar] = useState<boolean | null>(null);
   const [nomeCandidato, setNomeCandidato] = useState<string>('');
   const [nomeEntrevistador, setNomeEntrevistador] = useState<string>('');
@@ -222,6 +221,19 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     const telefone = respostas['telefone_morador'];
 
     // 🎙️ PARAR GRAVAÇÃO E SALVAR ÁUDIO
+    await pararGravacao();
+
+    await finalizarPesquisa.mutateAsync({
+      pesquisaId,
+      nomeEntrevistado: nome,
+      telefoneEntrevistado: telefone,
+    });
+
+    onFinalizar();
+  };
+
+  // Função para parar gravação e salvar áudio
+  const pararGravacao = async () => {
     let audioBlob: Blob | undefined;
     let transcription: string = '';
     let duration: number = 0;
@@ -253,128 +265,98 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
         console.error('❌ Erro ao parar gravação:', error);
       }
     }
-
-    await finalizarPesquisa.mutateAsync({
-      pesquisaId,
-      nomeEntrevistado: nome,
-      telefoneEntrevistado: telefone,
-    });
-
-    onFinalizar();
   };
+
 
   // cancelar é invocado diretamente por onCancelar
 
   // Tela de Encerramento
   if (mostrarEncerramento) {
-  const telefoneContato = formulario.telefoneContato;
-    const telefoneFormatado = telefoneContato && telefoneContato.trim().length > 0
-      ? telefoneContato
-      : '[DDD] [NÚMERO_DO_PREFEITO]';
-
     return (
       <div className="app-container">
         {/* Header oculto no encerramento */}
 
         <main className="main-content">
           <div className="page-section">
-            {/* Parte 1 do Encerramento */}
-            {parteEncerramento === 1 && (
-              <>
-                <div className="card">
-                  <div className="encerramento-texto">
-                    <p>
-                      Muito obrigado por dedicar um tempinho para responder.
-                    </p>
-                    <p>
-                      O <strong>Prefeito Pedro Braga</strong> gravou um vídeo curtinho para agradecer pessoalmente a cada pessoa que está participando dessa escuta.
-                    </p>
-                    <p>
-                      É um vídeo simples, de agradecimento, em que ele também fala um pouco sobre o que acredita para o <strong>Norte de Minas</strong> e sobre a importância de ouvir quem vive na região.
-                    </p>
-                    <p>
-                      Posso te mostrar agora rapidinho?
-                    </p>
+            <div className="card">
+              <div className="encerramento-texto">
+                <p>
+                  Muito obrigado por dedicar um tempinho para responder.
+                </p>
+                <p>
+                  O <strong>Prefeito Pedro Braga</strong> gravou um vídeo curtinho para agradecer pessoalmente a cada pessoa que está participando dessa escuta.
+                </p>
+                <p>
+                  É um vídeo simples, de agradecimento, em que ele também fala um pouco sobre o que acredita para o <strong>Norte de Minas</strong> e sobre a importância de ouvir quem vive na região.
+                </p>
+                <p>
+                  Posso te mostrar agora rapidinho?
+                </p>
 
-                    {aceitouVerVideo === null && (
-                      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                        <button className="btn btn-primary" onClick={() => { setAceitouVerVideo(true); setMostrarVideoAgradecimento(true); }}>
-                          Mostrar vídeo agora
-                        </button>
-                        <button className="btn btn-ghost" onClick={() => setAceitouVerVideo(false)}>
-                          Pular vídeo
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Vídeo de agradecimento (offline-ready) */}
-                {aceitouVerVideo === true && (
-                  <div className="card">
-                    {!mostrarVideoAgradecimento ? (
-                      <button
-                        onClick={() => setMostrarVideoAgradecimento(true)}
-                        className="btn btn-secondary w-full"
-                      >
-                        Assistir vídeo de agradecimento
-                      </button>
-                    ) : (
-                      <div>
-                        <video
-                          controls
-                          preload="auto"
-                          style={{ width: '100%', borderRadius: '12px' }}
-                          src="/agradecimento.mp4"
-                        >
-                          Seu navegador não suporta o elemento de vídeo.
-                        </video>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '8px' }}>
-                          Dica: o vídeo é salvo para uso offline após a primeira visualização. Se não carregar,
-                          conecte-se à internet uma vez para baixar.
-                        </p>
-                      </div>
-                    )}
+                {aceitouVerVideo === null && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={async () => { 
+                        await pararGravacao();
+                        setAceitouVerVideo(true); 
+                        setMostrarVideoAgradecimento(true); 
+                      }}
+                    >
+                      Mostrar vídeo agora
+                    </button>
                   </div>
                 )}
+              </div>
+            </div>
 
-                <div className="card">
+            {/* Vídeo de agradecimento (offline-ready) */}
+            {aceitouVerVideo === true && (
+              <div className="card">
+                {!mostrarVideoAgradecimento ? (
                   <button
-                    onClick={() => setParteEncerramento(2)}
-                    className="btn btn-primary btn-large w-full"
+                    onClick={async () => {
+                      await pararGravacao();
+                      setMostrarVideoAgradecimento(true);
+                    }}
+                    className="btn btn-secondary w-full"
                   >
-                    Próximo
+                    Assistir vídeo de agradecimento
                   </button>
-                </div>
-              </>
-            )}
-
-            {/* Parte 2 do Encerramento */}
-            {parteEncerramento === 2 && (
-              <>
-                <div className="card">
-                  <div className="encerramento-texto">
-                    <p>
-                      E se em algum momento você quiser mandar uma sugestão, contar um problema ou deixar uma ideia, pode falar direto com o <strong>Prefeito Pedro Braga</strong> pelo WhatsApp: <strong>{telefoneFormatado}</strong>.
+                ) : (
+                  <div>
+                    <video
+                      controls
+                      preload="auto"
+                      style={{ width: '100%', borderRadius: '12px' }}
+                      src="/agradecimento.mp4"
+                      onLoadedMetadata={(e) => {
+                        const videoElement = e.currentTarget;
+                        videoElement.requestFullscreen?.().catch(err => {
+                          console.log('Não foi possível entrar em tela cheia:', err);
+                        });
+                      }}
+                    >
+                      Seu navegador não suporta o elemento de vídeo.
+                    </video>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '8px' }}>
+                      Dica: o vídeo é salvo para uso offline após a primeira visualização. Se não carregar,
+                      conecte-se à internet uma vez para baixar.
                     </p>
-                    <p>
-                      Ele vai ficar feliz em receber sua mensagem. Se puder, salva o contato como <strong>Prefeito Pedro Braga</strong> no seu celular, pra ficar mais fácil de falar com a gente depois.
-                    </p>
-                    <p className="final"><strong>Mais uma vez, muito obrigado pela atenção e tenha um excelente dia!</strong></p>
                   </div>
-                </div>
-
-                <div className="card">
-                  <button
-                    onClick={handleFinalizar}
-                    className="btn btn-primary btn-large w-full"
-                    disabled={finalizarPesquisa.isPending}
-                  >
-                    {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
-                  </button>
-                </div>
-              </>
+                )}
+              </div>
             )}
+
+            <div className="card">
+              <button
+                onClick={handleFinalizar}
+                className="btn btn-primary btn-large w-full"
+                disabled={finalizarPesquisa.isPending}
+              >
+                {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
+              </button>
+            </div>
           </div>
         </main>
 
@@ -450,19 +432,22 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
           {aceitouParticipar === false && (
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">✗ Pesquisa Recusada</h3>
+                <h3 className="card-title">Moradores ausentes</h3>
               </div>
-              <p style={{ textAlign: 'center', marginBottom: '20px' }}>
-                O entrevistado não aceitou participar da pesquisa.
+              <p style={{ textAlign: 'center', marginBottom: '20px', fontSize: '1.1rem', lineHeight: '1.6' }}>
+                Parece que não tem ninguém em casa agora.
                 <br />
-                Os dados foram salvos para estatísticas.
+                Tudo bem! Vamos para a próxima.
               </p>
-              <button
-                onClick={onCancelar}
-                className="btn btn-primary btn-large w-full"
-              >
-                Voltar para Home
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                  onClick={onCancelar}
+                  className="btn btn-primary"
+                  style={{ maxWidth: '200px', padding: '0.75rem 2rem' }}
+                >
+                  Continuar
+                </button>
+              </div>
             </div>
           )}
 

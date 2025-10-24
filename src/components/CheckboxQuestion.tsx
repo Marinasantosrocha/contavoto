@@ -46,6 +46,18 @@ export default function CheckboxQuestion({
     preCandidato || 'candidato'
   );
 
+  // Converter Markdown simples (negrito) para JSX
+  const renderizarLabel = (texto: string) => {
+    const partes = texto.split(/(\*\*.*?\*\*)/g);
+    return partes.map((parte, index) => {
+      if (parte.startsWith('**') && parte.endsWith('**')) {
+        const textoNegrito = parte.slice(2, -2);
+        return <strong key={index}>{textoNegrito}</strong>;
+      }
+      return parte;
+    });
+  };
+
   return (
     <div className="checkbox-question-container">
       {/* Card com a pergunta */}
@@ -66,14 +78,14 @@ export default function CheckboxQuestion({
           </label>
         </div>
 
-        <h2 className="question-text">{labelFormatado}</h2>
+        <h2 className="question-text">{renderizarLabel(labelFormatado)}</h2>
 
         {/* Mostrar opções se houver (radio, checkbox, select) */}
         {campo.opcoes && campo.opcoes.length > 0 && (
           <div className="question-options">
             <ul className="options-list" style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(4, 1fr)', 
+              gridTemplateColumns: campo.opcoes.length === 2 ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', 
               gap: '0.75rem',
               listStyle: 'none',
               padding: 0
@@ -84,7 +96,9 @@ export default function CheckboxQuestion({
                   backgroundColor: '#f3f4f6',
                   borderRadius: '0.5rem',
                   textAlign: 'center',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  // Se for a 5ª opção (index 4) de uma lista de 5 opções, ocupar toda a largura
+                  gridColumn: campo.opcoes.length === 5 && index === 4 ? '1 / -1' : 'auto'
                 }}>
                   {opcao}
                 </li>
