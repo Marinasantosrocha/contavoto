@@ -309,7 +309,7 @@ export const HomePage = ({
   // Removidos handlers não utilizados para evitar erros de compilação (noUnusedLocals)
 
   const handleGoToSettings = () => {
-    if (onNavigateToSettings) onNavigateToSettings();
+    navigate('/perfil');
   };
 
   async function executarSincronizacao() {
@@ -373,18 +373,12 @@ export const HomePage = ({
             <h1 className="header-title">Olá, {nomeEntrevistador}</h1>
           </div>
           <div className="header-actions">
-            {/* Status Online/Offline */}
-            <div className="status-indicator">
-              <div className={`status-dot ${isOnline ? 'online' : 'offline'}`}></div>
-            </div>
-            
             {/* Avatar do Usuário */}
             <div 
               className="user-avatar" 
               onClick={handleGoToSettings}
               style={{ 
-                cursor: 'pointer',
-                marginLeft: '12px'
+                cursor: 'pointer'
               }}
             >
               {user.foto_url ? (
