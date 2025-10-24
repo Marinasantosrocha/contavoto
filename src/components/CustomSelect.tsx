@@ -51,6 +51,10 @@ export const CustomSelect = ({
           <div 
             className={`custom-select-trigger ${isOpen ? 'open' : ''}`}
             onClick={() => setIsOpen(!isOpen)}
+            style={{
+              backgroundColor: '#ffffff',
+              background: '#ffffff'
+            }}
           >
             <span className={selectedOption ? '' : 'placeholder'}>
               {selectedOption ? selectedOption.label : placeholder}
@@ -66,14 +70,39 @@ export const CustomSelect = ({
           </div>
 
           {isOpen && (
-            <div className="custom-select-dropdown">
+            <div 
+              className="custom-select-dropdown"
+              style={{
+                backgroundColor: '#ffffff',
+                background: '#ffffff',
+                opacity: 1
+              }}
+            >
               {options.map((option) => (
                 <div
                   key={option.value}
                   className={`custom-select-option ${value === option.value ? 'selected' : ''}`}
                   onClick={() => handleSelect(option.value)}
+                  style={{
+                    backgroundColor: value === option.value ? '#20B2AA' : '#ffffff',
+                    background: value === option.value ? '#20B2AA' : '#ffffff',
+                    color: value === option.value ? 'white' : '#343A40',
+                    opacity: 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (value !== option.value) {
+                      e.currentTarget.style.backgroundColor = '#f0fffe';
+                      e.currentTarget.style.background = '#f0fffe';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (value !== option.value) {
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.background = '#ffffff';
+                    }
+                  }}
                 >
-                  <span>{option.label}</span>
+                  <span style={{ color: 'inherit', opacity: 1 }}>{option.label}</span>
                   {value === option.value && (
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
                       <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>

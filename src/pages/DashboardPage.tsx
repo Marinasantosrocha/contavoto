@@ -10,7 +10,7 @@ import { DonutChart } from '../components/charts/DonutChart';
 import { BarHorizontal } from '../components/charts/BarHorizontal';
 import { Stacked100BarList } from '../components/charts/Stacked100BarList';
 import { LineMulti } from '../components/charts/LineMulti';
-import { CustomSelect } from '../components/CustomSelect';
+import { SimpleSelect } from '../components/SimpleSelect';
 import '../styles/dashboard.css';
 
 interface DashboardPageProps {
@@ -205,42 +205,9 @@ export const DashboardPage = ({
       </header>
 
       <main className="main-content">
-        {/* KPIs do Período */}
-        <div className="page-section">
-          <div className="stats-grid-dashboard">
-            <div className="stat-card-dashboard primary">
-              <div className="stat-icon">📊</div>
-              <div className="stat-info">
-                <div className="stat-value">{totalAbordagens}</div>
-                <div className="stat-label">Abordagens no período</div>
-              </div>
-            </div>
-            <div className="stat-card-dashboard success">
-              <div className="stat-icon">✅</div>
-              <div className="stat-info">
-                <div className="stat-value">{aceitaramPeriodo}</div>
-                <div className="stat-label">Aceitaram</div>
-              </div>
-            </div>
-            <div className="stat-card-dashboard warning">
-              <div className="stat-icon">❌</div>
-              <div className="stat-info">
-                <div className="stat-value">{recusaramPeriodo}</div>
-                <div className="stat-label">Recusaram</div>
-              </div>
-            </div>
-            <div className="stat-card-dashboard info">
-              <div className="stat-icon">📈</div>
-              <div className="stat-info">
-                <div className="stat-value">{taxaAceite.toFixed(0)}%</div>
-                <div className="stat-label">Taxa de Aceite</div>
-              </div>
-            </div>
-          </div>
-        </div>
         {/* Filtros */}
         <div className="page-section">
-          <CustomSelect
+          <SimpleSelect
             label="Período de Análise"
             options={[
               { value: 'hoje', label: 'Hoje' },
@@ -255,7 +222,7 @@ export const DashboardPage = ({
           {/* Filtro de Pesquisador (apenas para não-pesquisadores) */}
           {!isPesquisador && (
             <div style={{ marginTop: '1rem' }}>
-              <CustomSelect
+              <SimpleSelect
                 label="Filtrar por Pesquisador"
                 options={[
                   { value: '', label: 'Todos os Pesquisadores' },
@@ -267,19 +234,9 @@ export const DashboardPage = ({
             </div>
           )}
 
-          {/* Filtro por Formulário */}
-          <div style={{ marginTop: '1rem' }}>
-            <CustomSelect
-              label="Formulário"
-              options={opcoesFormularios}
-              value={formularioSelecionado || ''}
-              onChange={(value) => setFormularioSelecionado((value as string) || null)}
-            />
-          </div>
-
           {/* Cidade e Bairro */}
           <div style={{ marginTop: '1rem' }}>
-            <CustomSelect
+            <SimpleSelect
               label="Cidade"
               options={opcoesCidades}
               value={cidadeSelecionada || ''}
@@ -287,7 +244,7 @@ export const DashboardPage = ({
             />
           </div>
           <div style={{ marginTop: '1rem' }}>
-            <CustomSelect
+            <SimpleSelect
               label="Bairro"
               options={opcoesBairros}
               value={bairroSelecionado || ''}
@@ -453,13 +410,13 @@ export const DashboardPage = ({
             subtitle={tsData ? `Período: ${periodoSelecionado}` : 'Carregando...'}
             right={(
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <CustomSelect
+                <SimpleSelect
                   label="Tema"
                   options={RFB_FIELDS.filter(f => f.type === 'scale3').map(f => ({ value: f.key, label: f.label }))}
                   value={temaTimeseries}
-                  onChange={(v) => setTemaTimeseries(v as string)}
+                  onChange={(v: string | number | null) => setTemaTimeseries(v as string)}
                 />
-                <CustomSelect
+                <SimpleSelect
                   label="Agrupar por"
                   options={[
                     { value: 'day', label: 'Dia' },
@@ -467,7 +424,7 @@ export const DashboardPage = ({
                     { value: 'month', label: 'Mês' },
                   ]}
                   value={bucketTimeseries}
-                  onChange={(v) => setBucketTimeseries(v as any)}
+                  onChange={(v: string | number | null) => setBucketTimeseries(v as 'day' | 'week' | 'month')}
                 />
               </div>
             )}

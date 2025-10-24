@@ -7,11 +7,13 @@
   position: relative;
   width: 100%;
   isolation: isolate;
+  background: transparent;
 }
 
 .custom-select-trigger {
   width: 100%;
   padding: 0.75rem 1rem;
+  background: #ffffff !important;
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 6px;
@@ -30,6 +32,7 @@
 
 .custom-select-trigger span {
   background: transparent !important;
+  background-color: transparent !important;
   color: inherit;
 }
 
@@ -65,14 +68,16 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
+  background: #ffffff !important;
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05);
   max-height: 250px;
   overflow-y: auto;
-  z-index: 9999;
+  z-index: 99999;
   animation: slideDown 0.2s ease;
+  isolation: isolate;
 }
 
 @keyframes slideDown {
@@ -86,31 +91,41 @@
   }
 }
 
-.custom-select-option {
+.custom-select-dropdown .custom-select-option {
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background-color 0.15s ease;
   font-size: 0.9375rem;
-  color: #343A40;
-  background-color: #ffffff;
+  color: #343A40 !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+  opacity: 1 !important;
 }
 
-.custom-select-option span {
+.custom-select-dropdown .custom-select-option span {
   flex: 1;
+  color: inherit !important;
+  opacity: 1 !important;
 }
 
-.custom-select-option:hover {
-  background-color: rgba(32, 178, 170, 0.08) !important;
+.custom-select-dropdown .custom-select-option:hover {
+  background: #f0fffe !important;
+  background-color: #f0fffe !important;
 }
 
-.custom-select-option.selected {
+.custom-select-dropdown .custom-select-option.selected {
+  background: #20B2AA !important;
   background-color: #20B2AA !important;
-  color: white;
+  color: white !important;
   font-weight: 500;
+}
+
+.custom-select-dropdown .custom-select-option.selected span {
+  color: white !important;
 }
 
 .custom-select-option:first-child {
@@ -133,6 +148,15 @@
 .custom-select-dropdown::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
+}
+
+/* Força máxima para evitar transparência */
+.custom-select-dropdown * {
+  opacity: 1 !important;
+}
+
+.custom-select-dropdown {
+  opacity: 1 !important;
 }
 
 .custom-select-dropdown::-webkit-scrollbar-thumb:hover {
