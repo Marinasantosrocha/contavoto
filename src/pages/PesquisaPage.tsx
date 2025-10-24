@@ -30,6 +30,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   // Estados locais
   const [respostas, setRespostas] = useState<{ [key: string]: any }>({});
   const [mostrarEncerramento, setMostrarEncerramento] = useState(false);
+  const [parteEncerramento, setParteEncerramento] = useState(1);
   const [aceitouParticipar, setAceitouParticipar] = useState<boolean | null>(null);
   const [nomeCandidato, setNomeCandidato] = useState<string>('');
   const [nomeEntrevistador, setNomeEntrevistador] = useState<string>('');
@@ -277,95 +278,103 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
         <main className="main-content">
           <div className="page-section">
-            {/* Encerramento - Parte 1 */}
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Encerramento (1/2)</h3>
-              </div>
-              <div className="encerramento-texto">
-                <p>
-                  Muito obrigado por dedicar um tempinho para responder.
-                </p>
-                <p>
-                  O <strong>Prefeito Pedro Braga</strong> gravou um vídeo curtinho para agradecer pessoalmente a cada pessoa que está participando dessa escuta.
-                </p>
-                <p>
-                  É um vídeo simples, de agradecimento, em que ele também fala um pouco sobre o que acredita para o <strong>Norte de Minas</strong> e sobre a importância de ouvir quem vive na região.
-                </p>
-                <p>
-                  Posso te mostrar agora rapidinho?
-                </p>
-
-                {aceitouVerVideo === null && (
-                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                    <button className="btn btn-primary" onClick={() => { setAceitouVerVideo(true); setMostrarVideoAgradecimento(true); }}>
-                      Mostrar vídeo agora
-                    </button>
-                    <button className="btn btn-ghost" onClick={() => setAceitouVerVideo(false)}>
-                      Pular vídeo
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Vídeo de agradecimento (offline-ready) */}
-            {aceitouVerVideo === true && (
-              <div className="card">
-                <div className="card-header">
-                  <h3 className="card-title">🎬 Vídeo de Agradecimento</h3>
-                </div>
-                {!mostrarVideoAgradecimento ? (
-                  <button
-                    onClick={() => setMostrarVideoAgradecimento(true)}
-                    className="btn btn-secondary w-full"
-                  >
-                    Assistir vídeo de agradecimento
-                  </button>
-                ) : (
-                  <div>
-                    <video
-                      controls
-                      preload="auto"
-                      style={{ width: '100%', borderRadius: '12px' }}
-                      src="/agradecimento.mp4"
-                    >
-                      Seu navegador não suporta o elemento de vídeo.
-                    </video>
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '8px' }}>
-                      Dica: o vídeo é salvo para uso offline após a primeira visualização. Se não carregar,
-                      conecte-se à internet uma vez para baixar.
+            {/* Parte 1 do Encerramento */}
+            {parteEncerramento === 1 && (
+              <>
+                <div className="card">
+                  <div className="encerramento-texto">
+                    <p>
+                      Muito obrigado por dedicar um tempinho para responder.
                     </p>
+                    <p>
+                      O <strong>Prefeito Pedro Braga</strong> gravou um vídeo curtinho para agradecer pessoalmente a cada pessoa que está participando dessa escuta.
+                    </p>
+                    <p>
+                      É um vídeo simples, de agradecimento, em que ele também fala um pouco sobre o que acredita para o <strong>Norte de Minas</strong> e sobre a importância de ouvir quem vive na região.
+                    </p>
+                    <p>
+                      Posso te mostrar agora rapidinho?
+                    </p>
+
+                    {aceitouVerVideo === null && (
+                      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        <button className="btn btn-primary" onClick={() => { setAceitouVerVideo(true); setMostrarVideoAgradecimento(true); }}>
+                          Mostrar vídeo agora
+                        </button>
+                        <button className="btn btn-ghost" onClick={() => setAceitouVerVideo(false)}>
+                          Pular vídeo
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Vídeo de agradecimento (offline-ready) */}
+                {aceitouVerVideo === true && (
+                  <div className="card">
+                    {!mostrarVideoAgradecimento ? (
+                      <button
+                        onClick={() => setMostrarVideoAgradecimento(true)}
+                        className="btn btn-secondary w-full"
+                      >
+                        Assistir vídeo de agradecimento
+                      </button>
+                    ) : (
+                      <div>
+                        <video
+                          controls
+                          preload="auto"
+                          style={{ width: '100%', borderRadius: '12px' }}
+                          src="/agradecimento.mp4"
+                        >
+                          Seu navegador não suporta o elemento de vídeo.
+                        </video>
+                        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '8px' }}>
+                          Dica: o vídeo é salvo para uso offline após a primeira visualização. Se não carregar,
+                          conecte-se à internet uma vez para baixar.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+
+                <div className="card">
+                  <button
+                    onClick={() => setParteEncerramento(2)}
+                    className="btn btn-primary btn-large w-full"
+                  >
+                    Próximo
+                  </button>
+                </div>
+              </>
             )}
 
-            {/* Encerramento - Parte 2 */}
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Encerramento (2/2)</h3>
-              </div>
-              <div className="encerramento-texto">
-                <p>
-                  E se em algum momento você quiser mandar uma sugestão, contar um problema ou deixar uma ideia, pode falar direto com o <strong>Prefeito Pedro Braga</strong> pelo WhatsApp: <strong>{telefoneFormatado}</strong>.
-                </p>
-                <p>
-                  Ele vai ficar feliz em receber sua mensagem. Se puder, salva o contato como <strong>Prefeito Pedro Braga</strong> no seu celular, pra ficar mais fácil de falar com a gente depois.
-                </p>
-                <p className="final"><strong>Mais uma vez, muito obrigado pela atenção e tenha um excelente dia!</strong></p>
-              </div>
-            </div>
+            {/* Parte 2 do Encerramento */}
+            {parteEncerramento === 2 && (
+              <>
+                <div className="card">
+                  <div className="encerramento-texto">
+                    <p>
+                      E se em algum momento você quiser mandar uma sugestão, contar um problema ou deixar uma ideia, pode falar direto com o <strong>Prefeito Pedro Braga</strong> pelo WhatsApp: <strong>{telefoneFormatado}</strong>.
+                    </p>
+                    <p>
+                      Ele vai ficar feliz em receber sua mensagem. Se puder, salva o contato como <strong>Prefeito Pedro Braga</strong> no seu celular, pra ficar mais fácil de falar com a gente depois.
+                    </p>
+                    <p className="final"><strong>Mais uma vez, muito obrigado pela atenção e tenha um excelente dia!</strong></p>
+                  </div>
+                </div>
 
-            <div className="card">
-              <button
-                onClick={handleFinalizar}
-                className="btn btn-primary btn-large w-full"
-                disabled={finalizarPesquisa.isPending}
-              >
-                {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
-              </button>
-            </div>
+                <div className="card">
+                  <button
+                    onClick={handleFinalizar}
+                    className="btn btn-primary btn-large w-full"
+                    disabled={finalizarPesquisa.isPending}
+                  >
+                    {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </main>
 
@@ -415,14 +424,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
             <>
               <div className="card">
                 <div className="card-header">
-                  <h3 className="card-title">📍 Localização</h3>
-                </div>
-                <p>{pesquisa.endereco}, {pesquisa.bairro} - {pesquisa.cidade}</p>
-              </div>
-
-              <div className="card">
-                <div className="card-header">
-                  <h3 className="card-title">🗣️ Abordagem Inicial</h3>
+                  <h3 className="card-title">Abordagem Inicial</h3>
                 </div>
                 <div className="script-box">
                   <p>
@@ -471,37 +473,45 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
               <div style={{ 
                 background: 'white',
                 borderRadius: '0.75rem',
-                padding: '1.5rem',
+                padding: '1rem',
                 marginBottom: '1.5rem',
                 boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                 width: '100%',
                 boxSizing: 'border-box'
               }}>
                 <h3 style={{ 
-                  fontSize: '1.125rem',
+                  fontSize: '1rem',
                   fontWeight: '600',
                   color: '#343A40',
-                  marginBottom: '1rem'
+                  marginBottom: '0.25rem'
                 }}>
                   Progresso da Pesquisa
                 </h3>
-                <div style={{ 
-                  width: '100%', 
-                  height: '8px', 
-                  backgroundColor: '#e5e7eb', 
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{ 
-                    width: `${progresso}%`, 
-                    height: '100%', 
-                    backgroundColor: '#20B2AA',
-                    transition: 'width 0.3s ease'
-                  }}></div>
+                    width: '100%', 
+                    height: '6px', 
+                    backgroundColor: '#e5e7eb', 
+                    borderRadius: '3px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ 
+                      width: `${progresso}%`, 
+                      height: '100%', 
+                      backgroundColor: '#20B2AA',
+                      transition: 'width 0.3s ease'
+                    }}></div>
+                  </div>
+                  <span style={{ 
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    color: '#6b7280',
+                    whiteSpace: 'nowrap',
+                    minWidth: 'fit-content'
+                  }}>
+                    {perguntaAtualIndex + 1} de {totalPerguntas}
+                  </span>
                 </div>
-                <p style={{ textAlign: 'center', marginTop: '8px', fontSize: '14px', color: '#6b7280' }}>
-                  {perguntaAtualIndex + 1} de {totalPerguntas} perguntas
-                </p>
               </div>
 
               {/* Componente de Pergunta com Checkbox */}

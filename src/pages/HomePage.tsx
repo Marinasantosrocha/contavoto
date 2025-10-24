@@ -3,11 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useFormularios } from '../hooks/useFormularios';
-import { CustomSelect } from '../components/CustomSelect';
 import { useEstatisticasPesquisas, useCriarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
-import { testarConexaoGemini, listarModelos } from '../services/geminiService';
 
 interface HomePageProps {
   onIniciarPesquisa: (formularioId: number) => void;
@@ -50,12 +48,12 @@ export const HomePage = ({
   const isSuperAdmin = tipoUsuarioId === 5; // ID do superadmin
   
   // React Query hooks - filtrar por usuário se for pesquisador
-  const { data: formularios = [], isLoading: loadingFormularios } = useFormularios();
+  const { data: formularios = [] } = useFormularios();
   const { data: estatisticas } = useEstatisticasPesquisas(isPesquisador ? usuarioId : undefined);
   const criarPesquisa = useCriarPesquisa();
   
   // Estados locais
-  const [formularioSelecionado, setFormularioSelecionado] = useState<number | null>(null);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [endereco, setEndereco] = useState('');
   const [numero, setNumero] = useState('');
   const [semNumero, setSemNumero] = useState(false);
@@ -63,12 +61,6 @@ export const HomePage = ({
   const [cidade, setCidade] = useState('');
   const [localizacaoCarregando, setLocalizacaoCarregando] = useState(false);
   const isOnline = useOnlineStatus();
-  // Estado do teste Gemini
-  const [geminiTestando, setGeminiTestando] = useState(false);
-  const [geminiOk, setGeminiOk] = useState<boolean | null>(null);
-  const [geminiLatenciaMs, setGeminiLatenciaMs] = useState<number | null>(null);
-  const [modelos, setModelos] = useState<string[] | null>(null);
-  const [listandoModelos, setListandoModelos] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [pendenciasCount, setPendenciasCount] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -93,11 +85,11 @@ export const HomePage = ({
   };
 
   useEffect(() => {
-    // Carregar localização automaticamente se for pesquisador
-    if (isPesquisador) {
+    // Carregar localização automaticamente quando mostrar o formulário
+    if (isPesquisador && mostrarFormulario && !endereco) {
       carregarLocalizacao();
     }
-  }, [isPesquisador]);
+  }, [isPesquisador, mostrarFormulario]);
 
   // Carrega contador de transcrições pendentes para superadmin
   useEffect(() => {
@@ -282,23 +274,17 @@ export const HomePage = ({
     }
   };
 
-  const handleListarModelos = async () => {
-    setListandoModelos(true);
-    setModelos(null);
-    try {
-      const nomes = await listarModelos();
-      setModelos(nomes);
-    } catch (e) {
-      console.error('Falha ao listar modelos:', e);
-      setModelos([`Erro: ${e instanceof Error ? e.message : String(e)}`]);
-    } finally {
-      setListandoModelos(false);
-    }
-  };
-
   const handleIniciar = async () => {
-    if (!formularioSelecionado || !endereco || !bairro || !cidade) {
+    if (!endereco || !bairro || !cidade) {
       alert('Aguarde a localização ser carregada ou preencha os campos manualmente!');
+      return;
+    }
+
+    // Como só temos um formulário, usa o primeiro disponível
+    const formularioId = formularios.length > 0 ? formularios[0].id as number : null;
+    
+    if (!formularioId) {
+      alert('Nenhum formulário disponível. Conecte-se à internet para sincronizar.');
       return;
     }
 
@@ -306,7 +292,7 @@ export const HomePage = ({
       const enderecoCompleto = numero ? `${endereco}, ${numero}` : endereco;
       
       const pesquisaId = await criarPesquisa.mutateAsync({
-        formularioId: formularioSelecionado,
+        formularioId,
         entrevistador: nomeEntrevistador,
         endereco: enderecoCompleto,
         bairro,
@@ -354,32 +340,34 @@ export const HomePage = ({
     }
   }
 
-  // Removido: criação de formulário modelo local (usar Supabase)
+  // Saudações rotativas para pesquisadores
+  const saudacoes = [
+    `Até agora você entrevistou ${estatisticas?.total || 0} pessoas.\nCada resposta conta!`,
+    `Você já completou ${estatisticas?.total || 0} entrevistas.\nContinue assim!`,
+    `Você já registrou ${estatisticas?.total || 0} entrevistas.\nExcelente trabalho!`,
+    `Parabéns!\nVocê já ajudou a coletar dados de ${estatisticas?.total || 0} pessoas.`,
+    `Você está arrasando!\nAté agora, ${estatisticas?.total || 0} entrevistas concluídas.`,
+    `Vamos lá! Cada entrevista é importante.\nVocê já completou ${estatisticas?.total || 0}.`,
+    `Ótimo progresso!\n${estatisticas?.total || 0} pessoas já foram entrevistadas por você.`,
+    `Vamos juntos!\nSua contribuição até agora: ${estatisticas?.total || 0} entrevistas.`,
+    `Cada resposta conta!\nAté agora: ${estatisticas?.total || 0} pessoas entrevistadas.`,
+    `Você está fazendo a diferença!\nJá registrou ${estatisticas?.total || 0} entrevistas.`,
+    `Bom trabalho!\nAté agora, você completou ${estatisticas?.total || 0} entrevistas. Continue firme!`,
+    `Mantenha o ritmo!\n${estatisticas?.total || 0} entrevistas já foram concluídas.`,
+    `Seu progresso é de: ${estatisticas?.total || 0} entrevistas.\nCada uma importa!`,
+    `Uau! Você já entrevistou ${estatisticas?.total || 0} pessoas.\nContinue ajudando a pesquisa a crescer!`,
+  ];
 
-  const handleTestarGemini = async () => {
-    setGeminiTestando(true);
-    setGeminiOk(null);
-    setGeminiLatenciaMs(null);
-    const inicio = Date.now();
-    try {
-      const ok = await testarConexaoGemini();
-      const fim = Date.now();
-      setGeminiLatenciaMs(fim - inicio);
-      setGeminiOk(ok);
-    } catch (e) {
-      const fim = Date.now();
-      setGeminiLatenciaMs(fim - inicio);
-      setGeminiOk(false);
-      console.error('Falha no teste do Gemini:', e);
-    } finally {
-      setGeminiTestando(false);
-    }
-  };
+  const [saudacaoAtual] = useState(() => {
+    const randomIndex = Math.floor(Math.random() * saudacoes.length);
+    return saudacoes[randomIndex];
+  });
 
   return (
     <div className="app-container">
       {/* Header Simples */}
-  <header className="modern-header home-header">
+      {!mostrarFormulario && (
+        <header className="modern-header home-header">
         <div className="header-content">
           <div className="header-left">
             <h1 className="header-title">Olá, {nomeEntrevistador}</h1>
@@ -432,162 +420,168 @@ export const HomePage = ({
           </div>
         </div>
       </header>
+      )}
 
       {/* Conteúdo Principal */}
       <main className="main-content">
-        {/* Seção de Estatísticas */}
-        <div className="page-section">
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-value">{estatisticas?.total || 0}</div>
-              <div className="stat-label">Total de Pesquisas</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{estatisticas?.finalizadas || 0}</div>
-              <div className="stat-label">Finalizadas</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{estatisticas?.emAndamento || 0}</div>
-              <div className="stat-label">Em Andamento</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{estatisticas?.naoSincronizadas || 0}</div>
-              <div className="stat-label">Não Sincronizadas</div>
+        {/* Seção de Saudação para Pesquisadores */}
+        {isPesquisador && !mostrarFormulario && (
+          <div className="page-section" style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minHeight: '120px',
+            padding: '2rem 1rem'
+          }}>
+            <p style={{ 
+              fontSize: '1.5rem', 
+              fontWeight: '600', 
+              color: '#000000',
+              textAlign: 'center',
+              maxWidth: '600px',
+              lineHeight: '1.6',
+              margin: 0,
+              whiteSpace: 'pre-line'
+            }}>
+              {saudacaoAtual}
+            </p>
+          </div>
+        )}
+
+        {/* Seção de Estatísticas - Apenas para NÃO Pesquisadores */}
+        {!isPesquisador && (
+          <div className="page-section">
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-value">{estatisticas?.total || 0}</div>
+                <div className="stat-label">Total de Pesquisas</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">{estatisticas?.finalizadas || 0}</div>
+                <div className="stat-label">Finalizadas</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">{estatisticas?.emAndamento || 0}</div>
+                <div className="stat-label">Em Andamento</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">{estatisticas?.naoSincronizadas || 0}</div>
+                <div className="stat-label">Não Sincronizadas</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Seção Nova Pesquisa - Apenas para Pesquisadores */}
         {isPesquisador && (
-          <div className="page-section">
-            <div className="card">
-              <div className="card-header">
-                <h2 className="card-title">Nova Pesquisa</h2>
-                <p className="card-subtitle">Preencha os dados para iniciar uma nova pesquisa</p>
+          <>
+            {!mostrarFormulario ? (
+              <div className="page-section" style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setMostrarFormulario(true)}
+                  className="btn btn-primary btn-large"
+                  disabled={formularios.length === 0}
+                  style={{ maxWidth: '300px', width: '100%' }}
+                >
+                  Iniciar Pesquisa
+                </button>
               </div>
+            ) : (
+              <div className="page-section">
+                <div className="card">
+                  <div className="page-section">
+                    <div className="form-group">
+                      <label className="form-label">Localização</label>
+                    </div>
 
-              <div className="form-group">
-                <CustomSelect
-                  label="Selecione o Formulário *"
-                  options={[
-                    { value: '', label: loadingFormularios ? 'Carregando...' : 'Escolha um formulário...' },
-                    ...formularios
-                      .filter((form) => typeof form.id === 'number')
-                      .map((form) => ({ value: form.id as number, label: form.nome }))
-                  ]}
-                  value={formularioSelecionado ?? ''}
-                  onChange={(v) => setFormularioSelecionado(v ? Number(v) : null)}
-                />
-                {formularios.length === 0 && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <small style={{ display: 'block', color: '#dc3545' }}>
-                      Nenhum formulário encontrado. Conecte-se à internet para baixar do Supabase.
-                    </small>
-                  </div>
-                )}
-              </div>
+                    <div className="form-group">
+                      <label className="form-label">Endereço *</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={endereco}
+                        onChange={(e) => setEndereco(e.target.value)}
+                        placeholder={localizacaoCarregando ? 'Carregando localização...' : 'Rua, Avenida, etc.'}
+                        required
+                      />
+                    </div>
 
-              {formularioSelecionado && (
-                <div className="page-section">
-                  <div className="form-group">
-                    <label className="form-label">📍 Localização Atual</label>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Endereço *</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={endereco}
-                      onChange={(e) => setEndereco(e.target.value)}
-                      placeholder={localizacaoCarregando ? 'Carregando localização...' : 'Rua, Avenida, etc.'}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                    <div className="form-group">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <input
-                          type="checkbox"
-                          checked={semNumero}
-                          onChange={(e) => {
-                            setSemNumero(e.target.checked);
-                            if (e.target.checked) {
-                              setNumero('');
-                            }
-                          }}
-                          style={{ margin: 0 }}
+                          type="text"
+                          className="form-input"
+                          value={numero}
+                          onChange={(e) => setNumero(e.target.value)}
+                          placeholder={localizacaoCarregando ? 'Carregando...' : 'Número da casa'}
+                          disabled={semNumero}
+                          style={{ width: '150px', opacity: semNumero ? 0.5 : 1 }}
                         />
-                        <span style={{ fontSize: '0.9rem', color: '#6c757d' }}>S/N</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={numero}
-                        onChange={(e) => setNumero(e.target.value)}
-                        placeholder={localizacaoCarregando ? 'Carregando...' : 'Número da casa'}
-                        disabled={semNumero}
-                        style={{ flex: 1, opacity: semNumero ? 0.5 : 1 }}
-                      />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
+                          <input
+                            type="checkbox"
+                            checked={semNumero}
+                            onChange={(e) => {
+                              setSemNumero(e.target.checked);
+                              if (e.target.checked) {
+                                setNumero('');
+                              }
+                            }}
+                            style={{ margin: 0 }}
+                          />
+                          <span style={{ fontSize: '0.9rem', color: '#6c757d' }}>Sem número</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Bairro *</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={bairro}
+                          onChange={(e) => setBairro(e.target.value)}
+                          placeholder={localizacaoCarregando ? 'Carregando...' : 'Nome do bairro'}
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Cidade *</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={cidade}
+                          onChange={(e) => setCidade(e.target.value)}
+                          placeholder={localizacaoCarregando ? 'Carregando...' : 'Nome da cidade'}
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label className="form-label">Bairro *</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={bairro}
-                        onChange={(e) => setBairro(e.target.value)}
-                        placeholder={localizacaoCarregando ? 'Carregando...' : 'Nome do bairro'}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Cidade *</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={cidade}
-                        onChange={(e) => setCidade(e.target.value)}
-                        placeholder={localizacaoCarregando ? 'Carregando...' : 'Nome da cidade'}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ textAlign: 'right' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                     <button
-                      onClick={carregarLocalizacao}
-                      className="btn btn-ghost btn-small"
-                      disabled={localizacaoCarregando}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#20B2AA',
-                        padding: '0.5rem 0',
-                        fontSize: '0.9rem',
-                        textDecoration: 'none'
-                      }}
+                      onClick={handleIniciar}
+                      className="btn btn-primary"
+                      style={{ minWidth: '140px', padding: '0.7rem 1.5rem' }}
+                      disabled={
+                        criarPesquisa.isPending || 
+                        localizacaoCarregando || 
+                        !endereco.trim() || 
+                        !bairro.trim() || 
+                        !cidade.trim() || 
+                        (!semNumero && !numero.trim())
+                      }
                     >
-                      {localizacaoCarregando ? 'Carregando...' : 'Atualizar Localização'}
+                      {criarPesquisa.isPending ? 'Carregando' : 'Confirmar'}
                     </button>
                   </div>
                 </div>
-              )}
-
-              <button
-                onClick={handleIniciar}
-                className="btn btn-primary btn-large w-full"
-                disabled={!formularioSelecionado || criarPesquisa.isPending || localizacaoCarregando}
-              >
-                {criarPesquisa.isPending ? '⏳ Criando...' : 'Iniciar Pesquisa'}
-              </button>
-            </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Mensagem para usuários não-pesquisadores */}
@@ -618,97 +612,15 @@ export const HomePage = ({
             </div>
           </div>
         )}
-
-        {/* Seção de Ações */}
-        <div className="page-section">
-          <div className="modern-list">
-            <div className="list-item" onClick={onVerPesquisas}>
-              <div className="list-item-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-                </svg>
-              </div>
-              <div className="list-item-content">
-                <div className="list-item-title">Ver Pesquisas Realizadas</div>
-                <div className="list-item-subtitle">Histórico completo das pesquisas</div>
-              </div>
-              <div className="list-item-arrow">›</div>
-            </div>
-
-            {onNavigateToDashboard && (
-              <div className="list-item" onClick={onNavigateToDashboard}>
-                <div className="list-item-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
-                  </svg>
-                </div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Dashboard de Análise</div>
-                  <div className="list-item-subtitle">Estatísticas e relatórios detalhados</div>
-                </div>
-                <div className="list-item-arrow">›</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Teste rápido do Gemini (IA) */}
-        <div className="page-section">
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">⚙️ Teste do Gemini (IA)</h2>
-              <p className="card-subtitle">Verifique se a chave VITE_GEMINI_API_KEY está ativa e a API responde</p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={handleTestarGemini}
-                disabled={geminiTestando}
-              >
-                {geminiTestando ? '⏳ Testando…' : '▶️ Testar conexão'}
-              </button>
-              <button
-                className="btn btn-ghost"
-                onClick={handleListarModelos}
-                disabled={listandoModelos}
-              >
-                {listandoModelos ? '⏳ Listando modelos…' : '📜 Listar modelos'}
-              </button>
-              {geminiOk === true && (
-                <span style={{ color: '#198754', fontWeight: 600 }}>
-                  ✅ Conectado {geminiLatenciaMs != null ? `(${geminiLatenciaMs} ms)` : ''}
-                </span>
-              )}
-              {geminiOk === false && (
-                <span style={{ color: '#dc3545', fontWeight: 600 }}>
-                  ❌ Falhou {geminiLatenciaMs != null ? `(${geminiLatenciaMs} ms)` : ''}
-                </span>
-              )}
-              {geminiOk === null && !geminiTestando && (
-                <span style={{ color: '#6c757d' }}>Sem teste realizado ainda</span>
-              )}
-            </div>
-            {modelos && (
-              <div style={{ marginTop: '12px' }}>
-                <div style={{ fontSize: '0.9rem', color: '#6c757d', marginBottom: '6px' }}>
-                  Modelos retornados pela API para sua chave:
-                </div>
-                <ul style={{ maxHeight: 160, overflow: 'auto', paddingLeft: 16 }}>
-                  {modelos.map((m, i) => (
-                    <li key={i} style={{ fontFamily: 'monospace' }}>{m}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
       </main>
 
-      {/* Navegação Inferior */}
-      <BottomNav 
-        onNavigatePesquisas={onVerPesquisas}
-        onNavigateDashboard={onNavigateToDashboard}
-      />
+      {/* Navegação Inferior - Apenas para NÃO Pesquisadores */}
+      {!isPesquisador && (
+        <BottomNav 
+          onNavigatePesquisas={onVerPesquisas}
+          onNavigateDashboard={onNavigateToDashboard}
+        />
+      )}
     </div>
   );
 };
