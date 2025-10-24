@@ -7,6 +7,15 @@ import { useEstatisticasPesquisas, useCriarPesquisa } from '../hooks/usePesquisa
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
 
+// Cidades disponíveis para seleção
+const CIDADES_DISPONIVEIS = [
+  'Lagoa dos Patos',
+  'Pirapora',
+  'Buritizeiro',
+  'Várzea da Palma',
+  'Lassance'
+];
+
 interface HomePageProps {
   onIniciarPesquisa: (formularioId: number) => void;
   onVerPesquisas: () => void;
@@ -59,35 +68,43 @@ export const HomePage = ({
   const [semNumero, setSemNumero] = useState(false);
   const [bairro, setBairro] = useState('');
   const [cidade, setCidade] = useState('');
-  const [localizacaoCarregando, setLocalizacaoCarregando] = useState(false);
   const isOnline = useOnlineStatus();
   const [syncing, setSyncing] = useState(false);
   const [pendenciasCount, setPendenciasCount] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  // Fallback offline: reutiliza último endereço geocodificado com sucesso
-  const salvarEnderecoLocal = (dados: { endereco: string; numero?: string; bairro: string; cidade: string }) => {
-    const payload = {
-      ...dados,
-      timestamp: Date.now(),
-    };
-    try { localStorage.setItem('lastKnownAddress', JSON.stringify(payload)); } catch {}
+  // Funções para gerenciar cache do último endereço usado
+  const salvarUltimoEndereco = (dados: { endereco: string; bairro: string; cidade: string }) => {
+    try {
+      localStorage.setItem('lastAddress', JSON.stringify(dados));
+    } catch (error) {
+      console.error('Erro ao salvar último endereço:', error);
+    }
   };
 
-  const carregarEnderecoLocal = (): { endereco: string; numero?: string; bairro: string; cidade: string } | null => {
+  const carregarUltimoEndereco = (): { endereco: string; bairro: string; cidade: string } | null => {
     try {
-      const raw = localStorage.getItem('lastKnownAddress');
+      const raw = localStorage.getItem('lastAddress');
       if (!raw) return null;
       return JSON.parse(raw);
-    } catch {
+    } catch (error) {
+      console.error('Erro ao carregar último endereço:', error);
       return null;
     }
   };
 
+  // Carregar último endereço ao abrir o formulário
   useEffect(() => {
-    // Carregar localização automaticamente quando mostrar o formulário
-    if (isPesquisador && mostrarFormulario && !endereco) {
-      carregarLocalizacao();
+    if (isPesquisador && mostrarFormulario) {
+      const ultimoEndereco = carregarUltimoEndereco();
+      if (ultimoEndereco) {
+        setEndereco(ultimoEndereco.endereco);
+        setBairro(ultimoEndereco.bairro);
+        setCidade(ultimoEndereco.cidade);
+        // Número sempre vazio
+        setNumero('');
+        setSemNumero(false);
+      }
     }
   }, [isPesquisador, mostrarFormulario]);
 
@@ -114,169 +131,9 @@ export const HomePage = ({
     return () => { cancel = true; clearInterval(id); };
   }, [isSuperAdmin]);
 
-  const carregarLocalizacao = async () => {
-    setLocalizacaoCarregando(true);
-    try {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            
-            // Tentar múltiplas APIs de geocodificação
-            try {
-              if (!navigator.onLine) {
-                // Offline: não geocodificar; tenta usar endereço salvo
-                const salvo = carregarEnderecoLocal();
-                if (salvo) {
-                  setEndereco(salvo.endereco);
-                  setNumero(salvo.numero || '');
-                  setBairro(salvo.bairro);
-                  setCidade(salvo.cidade);
-                }
-                return;
-              }
-              // Primeira tentativa: BigDataCloud (evita CORS do Nominatim)
-              const bdcResponse = await fetch(
-                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt-BR`
-              );
-              const bdcData = await bdcResponse.json();
-
-              if (bdcData && (bdcData.streetName || bdcData.city || bdcData.locality)) {
-                const numeroCasa = bdcData.streetNumber || '';
-                const rua = bdcData.streetName || bdcData.locality || '';
-
-                setEndereco(rua || 'Endereço não encontrado');
-                setNumero(numeroCasa);
-
-                if (numeroCasa) {
-                  console.log('Número detectado automaticamente:', numeroCasa);
-                } else {
-                  console.log('Número não detectado - usuário deve preencher manualmente');
-                }
-                const bairroLocal = bdcData.principalSubdivision || bdcData.district || bdcData.localityInfo?.administrative?.[1]?.name || 'Bairro não encontrado';
-                const cidadeLocal = bdcData.city || bdcData.locality || bdcData.localityInfo?.administrative?.[2]?.name || 'Cidade não encontrada';
-                setBairro(bairroLocal);
-                setCidade(cidadeLocal);
-                // Persistir para uso offline
-                salvarEnderecoLocal({ endereco: rua || 'Endereço não encontrado', numero: numeroCasa, bairro: bairroLocal, cidade: cidadeLocal });
-              } else {
-                throw new Error('BigDataCloud sem dados úteis');
-              }
-            } catch (bdcError) {
-              console.log('BigDataCloud falhou, tentando Nominatim...');
-
-              // Segunda tentativa: Nominatim (pode falhar por CORS; usado apenas como fallback)
-              try {
-                if (!navigator.onLine) {
-                  const salvo = carregarEnderecoLocal();
-                  if (salvo) {
-                    setEndereco(salvo.endereco);
-                    setNumero(salvo.numero || '');
-                    setBairro(salvo.bairro);
-                    setCidade(salvo.cidade);
-                  }
-                  return;
-                }
-                const nominatimResponse = await fetch(
-                  `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR,pt,en`
-                );
-                const nominatimData = await nominatimResponse.json();
-
-                if (nominatimData.address) {
-                  const addr = nominatimData.address;
-                  const numeroCasa = addr.house_number || '';
-                  const rua = addr.road || addr.street || addr.pedestrian || '';
-
-                  setEndereco(rua || 'Endereço não encontrado');
-                  setNumero(numeroCasa);
-                  if (numeroCasa) {
-                    console.log('Número detectado automaticamente (Nominatim):', numeroCasa);
-                  }
-                  const bairroLocal = addr.suburb || addr.neighbourhood || addr.quarter || addr.village || 'Bairro não encontrado';
-                  const cidadeLocal = addr.city || addr.town || addr.municipality || addr.county || 'Cidade não encontrada';
-                  setBairro(bairroLocal);
-                  setCidade(cidadeLocal);
-                  // Persistir para uso offline
-                  salvarEnderecoLocal({ endereco: rua || 'Endereço não encontrado', numero: numeroCasa, bairro: bairroLocal, cidade: cidadeLocal });
-                } else {
-                  throw new Error('Nominatim sem dados úteis');
-                }
-              } catch (nominatimError) {
-                console.warn('Não foi possível obter endereço automaticamente. Preencha manualmente.');
-                // Tentar último endereço salvo como fallback
-                const salvo = carregarEnderecoLocal();
-                if (salvo) {
-                  setEndereco(salvo.endereco);
-                  setNumero(salvo.numero || '');
-                  setBairro(salvo.bairro);
-                  setCidade(salvo.cidade);
-                }
-              }
-            }
-          },
-          (error) => {
-            console.error('Erro de geolocalização:', error);
-            let errorMessage = 'Erro ao obter localização';
-            
-            switch (error.code) {
-              case error.PERMISSION_DENIED:
-                errorMessage = 'Permissão de localização negada';
-                break;
-              case error.POSITION_UNAVAILABLE:
-                errorMessage = 'Localização não disponível';
-                break;
-              case error.TIMEOUT:
-                errorMessage = 'Timeout ao obter localização';
-                break;
-            }
-            
-            setCidade(errorMessage);
-            setBairro(errorMessage);
-            setEndereco(errorMessage);
-            setNumero('');
-            // Fallback para último endereço salvo
-            const salvo = carregarEnderecoLocal();
-            if (salvo) {
-              setEndereco(salvo.endereco);
-              setNumero(salvo.numero || '');
-              setBairro(salvo.bairro);
-              setCidade(salvo.cidade);
-            }
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000 // 5 minutos
-          }
-        );
-      } else {
-        setCidade('Geolocalização não suportada pelo navegador');
-        setBairro('Geolocalização não suportada pelo navegador');
-        setEndereco('Geolocalização não suportada pelo navegador');
-        setNumero('');
-      }
-    } catch (error) {
-      console.error('Erro ao carregar localização:', error);
-      setCidade('Erro ao carregar localização');
-      setBairro('Erro ao carregar localização');
-      setEndereco('Erro ao carregar localização');
-      setNumero('');
-      // Fallback para último endereço salvo
-      const salvo = carregarEnderecoLocal();
-      if (salvo) {
-        setEndereco(salvo.endereco);
-        setNumero(salvo.numero || '');
-        setBairro(salvo.bairro);
-        setCidade(salvo.cidade);
-      }
-    } finally {
-      setLocalizacaoCarregando(false);
-    }
-  };
-
   const handleIniciar = async () => {
     if (!endereco || !bairro || !cidade) {
-      alert('Aguarde a localização ser carregada ou preencha os campos manualmente!');
+      alert('Preencha todos os campos obrigatórios!');
       return;
     }
 
@@ -290,6 +147,13 @@ export const HomePage = ({
 
     try {
       const enderecoCompleto = numero ? `${endereco}, ${numero}` : endereco;
+      
+      // Salvar endereço no cache (sem o número)
+      salvarUltimoEndereco({
+        endereco,
+        bairro,
+        cidade
+      });
       
       const pesquisaId = await criarPesquisa.mutateAsync({
         formularioId,
@@ -373,31 +237,43 @@ export const HomePage = ({
             <h1 className="header-title">Olá, {nomeEntrevistador}</h1>
           </div>
           <div className="header-actions">
-            {/* Ícone de Logout */}
+            {/* Avatar do Usuário */}
             <div 
+              className="user-avatar" 
               onClick={handleGoToSettings}
               style={{ 
-                cursor: 'pointer',
-                padding: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                cursor: 'pointer'
               }}
             >
-              <svg 
-                width="24" 
-                height="24" 
-                viewBox="0 0 24 24" 
-                fill="none"
-                stroke="#000000"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
+              {user.foto_url ? (
+                <img 
+                  src={user.foto_url} 
+                  alt={nomeEntrevistador}
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid #20B2AA'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: '#20B2AA',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  border: '2px solid #20B2AA'
+                }}>
+                  {nomeEntrevistador.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -506,7 +382,7 @@ export const HomePage = ({
                         className="form-input"
                         value={endereco}
                         onChange={(e) => setEndereco(e.target.value)}
-                        placeholder={localizacaoCarregando ? 'Carregando localização...' : 'Rua, Avenida, etc.'}
+                        placeholder="Rua, Avenida, etc."
                         required
                       />
                     </div>
@@ -518,7 +394,7 @@ export const HomePage = ({
                           className="form-input"
                           value={numero}
                           onChange={(e) => setNumero(e.target.value)}
-                          placeholder={localizacaoCarregando ? 'Carregando...' : 'Número da casa'}
+                          placeholder="Número da casa"
                           disabled={semNumero}
                           style={{ width: '150px', opacity: semNumero ? 0.5 : 1 }}
                         />
@@ -547,21 +423,27 @@ export const HomePage = ({
                           className="form-input"
                           value={bairro}
                           onChange={(e) => setBairro(e.target.value)}
-                          placeholder={localizacaoCarregando ? 'Carregando...' : 'Nome do bairro'}
+                          placeholder="Nome do bairro"
                           required
                         />
                       </div>
 
                       <div className="form-group">
                         <label className="form-label">Cidade *</label>
-                        <input
-                          type="text"
+                        <select
                           className="form-input"
                           value={cidade}
                           onChange={(e) => setCidade(e.target.value)}
-                          placeholder={localizacaoCarregando ? 'Carregando...' : 'Nome da cidade'}
                           required
-                        />
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <option value="">Selecione uma cidade</option>
+                          {CIDADES_DISPONIVEIS.map((cidadeOpcao) => (
+                            <option key={cidadeOpcao} value={cidadeOpcao}>
+                              {cidadeOpcao}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -573,7 +455,6 @@ export const HomePage = ({
                       style={{ minWidth: '140px', padding: '0.7rem 1.5rem' }}
                       disabled={
                         criarPesquisa.isPending || 
-                        localizacaoCarregando || 
                         !endereco.trim() || 
                         !bairro.trim() || 
                         !cidade.trim() || 
