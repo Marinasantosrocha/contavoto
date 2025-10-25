@@ -35,7 +35,7 @@
 .tipo-usuario-card:hover {
   background: #f1f5f9;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(36, 44, 48, 0.1);
 }
 
 .tipo-usuario-card.selected {
@@ -195,7 +195,7 @@ input:checked + .slider:before {
 
 .resumo-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 20px rgba(36, 44, 48, 0.1);
 }
 
 .resumo-header {

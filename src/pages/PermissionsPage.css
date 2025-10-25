@@ -20,7 +20,7 @@
   border-radius: 20px;
   padding: 24px;
   box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.1),
+    0 20px 40px rgba(36, 44, 48, 0.1),
     0 0 0 1px rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   height: fit-content;
@@ -52,7 +52,7 @@
 .user-item:hover {
   background: #f1f5f9;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 20px rgba(36, 44, 48, 0.1);
 }
 
 .user-item.selected {
@@ -144,7 +144,7 @@
   border-radius: 20px;
   padding: 24px;
   box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.1),
+    0 20px 40px rgba(36, 44, 48, 0.1),
     0 0 0 1px rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   height: fit-content;
@@ -229,7 +229,7 @@
 .form-permission-item label:hover {
   background: #f1f5f9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(36, 44, 48, 0.1);
 }
 
 .form-permission-item input[type="checkbox"] {

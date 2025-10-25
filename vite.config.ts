@@ -7,10 +7,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logoconta.png', 'apple-touch-icon.png', 'agradecimento.mp4'],
+      includeAssets: ['favicon.ico', 'logo.png', 'apple-touch-icon.png', 'agradecimento.mp4'],
           manifest: {
-            name: 'ContaVoto - Sistema de Pesquisa de Campo',
-            short_name: 'ContaVoto',
+            name: 'OpineAi - Sistema de Pesquisa de Campo',
+            short_name: 'OpineAi',
             description: 'Sistema de pesquisa de campo que funciona offline',
   theme_color: '#1a9bff',
         background_color: '#ffffff',
@@ -20,7 +20,7 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'logoconta.png',
+            src: 'logo.png',
             sizes: 'any',
             type: 'image/png',
             purpose: 'any maskable'
