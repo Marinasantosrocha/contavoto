@@ -20,8 +20,8 @@ Promise.all(
     const outputFile = path.join(outputDir, `pwa-${size}x${size}.png`);
     
     try {
-      // Adiciona padding de 30% do tamanho
-      const padding = Math.floor(size * 0.3);
+      // Adiciona padding de 40% do tamanho
+      const padding = Math.floor(size * 0.4);
       const iconSize = size - (padding * 2);
       
       await sharp(inputFile)
