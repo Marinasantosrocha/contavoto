@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo.png', 'apple-touch-icon.png', 'lagoa_dos_patos.mov'],
+      includeAssets: ['favicon.ico', 'logo.png', 'apple-touch-icon.png', 'Lagoa_dos_patos.mp4'],
           manifest: {
             name: 'OpineAi - Sistema de Pesquisa de Campo',
             short_name: 'OpineAi',
@@ -44,7 +44,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp4,webm,ogg,mov}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp4,webm,ogg}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,

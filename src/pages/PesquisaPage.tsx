@@ -321,7 +321,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                   display: 'block',
                   objectFit: 'contain'
                 }}
-                src="/lagoa_dos_patos.mov"
+                src="/Lagoa_dos_patos.mp4"
               >
                 Seu navegador não suporta o elemento de vídeo.
               </video>
