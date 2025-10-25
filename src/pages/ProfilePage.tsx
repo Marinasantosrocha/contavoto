@@ -82,7 +82,7 @@ export function ProfilePage({ onLogout }: ProfilePageProps) {
             >
               <path 
                 d="M15 18L9 12L15 6" 
-                stroke="#20B2AA" 
+                stroke="#1a9bff" 
                 strokeWidth="3" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"

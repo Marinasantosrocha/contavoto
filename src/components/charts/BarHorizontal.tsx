@@ -13,7 +13,7 @@ interface BarHorizontalProps {
   normalizePercent?: boolean; // se true, assume que value é contagem e converte para % sobre o total
 }
 
-export function BarHorizontal({ data, height = 280, color = '#20B2AA', maxBars = 8, normalizePercent = true }: BarHorizontalProps) {
+export function BarHorizontal({ data, height = 280, color = '#242c30', maxBars = 8, normalizePercent = true }: BarHorizontalProps) {
   const total = data.reduce((a, v) => a + v.value, 0) || 1;
   const normalized = normalizePercent ? data.map(d => ({ name: d.name, value: Math.round(d.value * 1000 / total) / 10 })) : data;
   const sorted = [...normalized].sort((a,b) => b.value - a.value).slice(0, maxBars);

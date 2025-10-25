@@ -261,7 +261,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
               >
                 <path 
                   d="M15 18L9 12L15 6" 
-                  stroke="#20B2AA" 
+                  stroke="#1a9bff" 
                   strokeWidth="3" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
@@ -417,7 +417,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
             >
               <path 
                 d="M15 18L9 12L15 6" 
-                stroke="#20B2AA" 
+                stroke="#1a9bff" 
                 strokeWidth="3" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -520,7 +520,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                       <span style={{ 
                         fontSize: '13px', 
                         fontWeight: '600',
-                        color: '#20B2AA',
+                        color: '#1a9bff',
                         textTransform: 'uppercase',
                         letterSpacing: '0.5px'
                       }}>

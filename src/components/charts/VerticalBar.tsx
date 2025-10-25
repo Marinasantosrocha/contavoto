@@ -11,7 +11,7 @@ interface VerticalBarProps {
   color?: string;
 }
 
-export function VerticalBar({ data, height = 260, color = '#20B2AA' }: VerticalBarProps) {
+export function VerticalBar({ data, height = 260, color = '#242c30' }: VerticalBarProps) {
   const sorted = [...data].sort((a,b) => b.value - a.value);
   return (
     <div style={{ width: '100%', height }}>

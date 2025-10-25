@@ -283,7 +283,7 @@ export const PermissionsPage: React.FC = () => {
             >
               <path 
                 d="M15 18L9 12L15 6" 
-                stroke="#20B2AA" 
+                stroke="#1a9bff" 
                 strokeWidth="3" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -370,7 +370,7 @@ export const PermissionsPage: React.FC = () => {
                     width: '48px',
                     height: '48px',
                     borderRadius: '50%',
-                    backgroundColor: usuario.foto_url ? 'transparent' : '#20B2AA',
+                    backgroundColor: usuario.foto_url ? 'transparent' : '#1a9bff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -617,7 +617,7 @@ export const PermissionsPage: React.FC = () => {
                       height: '100px', 
                       borderRadius: '50%',
                       objectFit: 'cover',
-                      border: '3px solid #20B2AA'
+                      border: '3px solid #1a9bff'
                     }}
                   />
                 </div>

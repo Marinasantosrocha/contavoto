@@ -5,7 +5,7 @@ export interface DonutDatum {
   value: number;
 }
 
-const DEFAULT_COLORS = ['#20B2AA', '#17A2B8', '#FFC107', '#FF6B6B', '#4D96FF', '#845EC2', '#2C73D2', '#008B8B'];
+const DEFAULT_COLORS = ['#242c30', '#17A2B8', '#FFC107', '#FF6B6B', '#4D96FF', '#845EC2', '#2C73D2', '#008B8B'];
 
 interface DonutChartProps {
   data: DonutDatum[];

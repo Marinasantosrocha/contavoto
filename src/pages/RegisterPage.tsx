@@ -103,7 +103,7 @@ export const RegisterPage: React.FC = () => {
             >
               <path 
                 d="M15 18L9 12L15 6" 
-                stroke="#20B2AA" 
+                stroke="#1a9bff" 
                 strokeWidth="3" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -227,7 +227,7 @@ export const RegisterPage: React.FC = () => {
                   fontSize: '1rem',
                   fontWeight: '600',
                   marginTop: '1rem',
-                  backgroundColor: '#20B2AA',
+                  backgroundColor: '#1a9bff',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',

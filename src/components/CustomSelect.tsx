@@ -84,8 +84,8 @@ export const CustomSelect = ({
                   className={`custom-select-option ${value === option.value ? 'selected' : ''}`}
                   onClick={() => handleSelect(option.value)}
                   style={{
-                    backgroundColor: value === option.value ? '#20B2AA' : '#ffffff',
-                    background: value === option.value ? '#20B2AA' : '#ffffff',
+                    backgroundColor: value === option.value ? '#1a9bff' : '#ffffff',
+                    background: value === option.value ? '#1a9bff' : '#ffffff',
                     color: value === option.value ? 'white' : '#343A40',
                     opacity: 1
                   }}

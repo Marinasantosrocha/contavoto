@@ -9,11 +9,7 @@ import '../styles/design-system.css';
 
 // Cidades disponíveis para seleção
 const CIDADES_DISPONIVEIS = [
-  'Lagoa dos Patos',
-  'Pirapora',
-  'Buritizeiro',
-  'Várzea da Palma',
-  'Lassance'
+  'Lagoa dos Patos'
 ];
 
 interface HomePageProps {
@@ -254,7 +250,7 @@ export const HomePage = ({
                     height: '40px', 
                     borderRadius: '50%',
                     objectFit: 'cover',
-                    border: '2px solid #20B2AA'
+                    border: '2px solid #1a9bff'
                   }}
                 />
               ) : (
@@ -262,14 +258,14 @@ export const HomePage = ({
                   width: '40px',
                   height: '40px',
                   borderRadius: '50%',
-                  backgroundColor: '#20B2AA',
+                  backgroundColor: '#1a9bff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: 'white',
                   fontWeight: 'bold',
                   fontSize: '16px',
-                  border: '2px solid #20B2AA'
+                  border: '2px solid #1a9bff'
                 }}>
                   {nomeEntrevistador.charAt(0).toUpperCase()}
                 </div>
@@ -372,11 +368,11 @@ export const HomePage = ({
                 <div className="card">
                   <div className="page-section">
                     <div className="form-group">
-                      <label className="form-label">Localização</label>
+                      <label className="form-label" style={{ textAlign: 'center', display: 'block' }}>Endereço</label>
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Endereço *</label>
+                      <label className="form-label">Rua *</label>
                       <input
                         type="text"
                         className="form-input"
@@ -448,11 +444,11 @@ export const HomePage = ({
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '-2rem' }}>
                     <button
                       onClick={handleIniciar}
                       className="btn btn-primary"
-                      style={{ minWidth: '140px', padding: '0.7rem 1.5rem' }}
+                      style={{ width: '100%', padding: '0.7rem 1.5rem' }}
                       disabled={
                         criarPesquisa.isPending || 
                         !endereco.trim() || 

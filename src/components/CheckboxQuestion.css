@@ -37,7 +37,7 @@
 .question-number {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #20B2AA;
+  color: #242c30;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   flex-shrink: 0; /* Não encolhe */
@@ -56,10 +56,10 @@
   width: 28px;
   height: 28px;
   cursor: pointer;
-  accent-color: #20B2AA;
+  accent-color: #1a9bff;
   border-radius: 6px;
   flex-shrink: 0;
-  border: 2px solid #20B2AA; /* Borda mais fina */
+  border: 2px solid #1a9bff; /* Borda mais fina */
   appearance: none; /* Remove estilo padrão */
   background: white;
   position: relative;
@@ -67,7 +67,7 @@
 }
 
 .perguntei-checkbox input[type="checkbox"]:checked {
-  background-color: #20B2AA;
+  background-color: #1a9bff;
 }
 
 /* Checkmark mais fino */
@@ -97,13 +97,18 @@
   overflow-wrap: break-word; /* Suporte adicional */
 }
 
+.question-text strong {
+  font-weight: 800;
+  color: #000000;
+}
+
 /* Opções disponíveis */
 .question-options {
-  background: rgba(32, 178, 170, 0.05);
+  background: rgba(26, 155, 255, 0.05);
   border-radius: 0.5rem;
   padding: 1rem; /* Padding uniforme */
   margin-top: 1rem;
-  border: 1px solid rgba(32, 178, 170, 0.2);
+  border: 1px solid rgba(26, 155, 255, 0.2);
   width: 100%;
   box-sizing: border-box;
 }
@@ -130,7 +135,7 @@
 /* Botão Próximo - Padrão Sim/Não */
 .btn-proximo {
   padding: 1rem 2rem;
-  background-color: #20B2AA;
+  background-color: #1a9bff;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -138,7 +143,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(32, 178, 170, 0.3);
+  box-shadow: none;
   width: 100%;
   text-align: center;
   box-sizing: border-box;

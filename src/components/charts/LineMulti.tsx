@@ -26,7 +26,7 @@ export function LineMulti({ data, series, height = 280, ySuffix = '%' }: LineMul
               key={s.key}
               type="monotone"
               dataKey={s.key}
-              stroke={s.color || '#20B2AA'}
+              stroke={s.color || '#242c30'}
               strokeWidth={2}
               dot={false}
               activeDot={false}

@@ -50,7 +50,7 @@
 
 .simple-select:focus {
   outline: none;
-  border-color: #20B2AA;
+  border-color: #242c30;
   box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
 }
 
@@ -63,8 +63,8 @@
 }
 
 .simple-select option:checked {
-  background-color: #20B2AA !important;
-  background: #20B2AA !important;
+  background-color: #242c30 !important;
+  background: #242c30 !important;
   color: white !important;
   font-weight: 500;
 }

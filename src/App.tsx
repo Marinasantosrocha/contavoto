@@ -119,7 +119,7 @@ function AppContent() {
             <div className="install-icon">📱</div>
             <div className="install-text">
               <strong>Instalar App</strong>
-              <p>Instale o PORTA A PORTA para acesso rápido e offline!</p>
+              <p>Instale o OpineAi para acesso rápido e offline!</p>
             </div>
             <div className="install-buttons">
               <button onClick={installApp} className="btn btn-primary btn-small">
@@ -128,6 +128,7 @@ function AppContent() {
               <button 
                 onClick={dismissInstallPrompt} 
                 className="btn btn-secondary btn-small"
+                style={{ color: '#242c30' }}
               >
                 ✖️
               </button>

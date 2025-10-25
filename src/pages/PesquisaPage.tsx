@@ -33,6 +33,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [aceitouParticipar, setAceitouParticipar] = useState<boolean | null>(null);
   const [nomeCandidato, setNomeCandidato] = useState<string>('');
   const [nomeEntrevistador, setNomeEntrevistador] = useState<string>('');
+  const [generoEntrevistado, setGeneroEntrevistado] = useState<'masculino' | 'feminino' | null>(null);
   
   // Estados para gravação contínua
   const [isRecording, setIsRecording] = useState(false);
@@ -44,6 +45,29 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [perguntasFeitas, setPerguntasFeitas] = useState<{ [campoId: string]: boolean }>({});
   const [aceitouVerVideo, setAceitouVerVideo] = useState<boolean | null>(null);
   const [mostrarVideoAgradecimento, setMostrarVideoAgradecimento] = useState(false);
+
+  // Função para adaptar texto das perguntas baseado no gênero
+  const adaptarTextoPorGenero = (texto: string, genero: 'masculino' | 'feminino' | null): string => {
+    if (!genero) return texto;
+    
+    if (genero === 'feminino') {
+      return texto
+        .replace(/senhor\(a\)/gi, 'Senhora')
+        .replace(/O\(a\)/g, 'A')
+        .replace(/o\(a\)/g, 'a')
+        .replace(/ele\(a\)/gi, 'ela')
+        .replace(/do\(a\)/gi, 'da')
+        .replace(/seu\(sua\)/gi, 'sua');
+    } else {
+      return texto
+        .replace(/senhor\(a\)/gi, 'Senhor')
+        .replace(/O\(a\)/g, 'O')
+        .replace(/o\(a\)/g, 'o')
+        .replace(/ele\(a\)/gi, 'ele')
+        .replace(/do\(a\)/gi, 'do')
+        .replace(/seu\(sua\)/gi, 'seu');
+    }
+  };
 
   // Buscar o nome do candidato do usuário logado
   useEffect(() => {
@@ -129,11 +153,12 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
   // Removido handleResposta não utilizado (evita erro de noUnusedLocals)
 
-  const handleAceitarParticipacao = async () => {
+  const handleAceitarParticipacao = async (genero: 'masculino' | 'feminino') => {
     setAceitouParticipar(true);
+    setGeneroEntrevistado(genero);
     setPerguntaAtualIndex(0);
     
-    // Salvar aceite no banco
+    // Salvar aceite no banco (sem o gênero, apenas true)
     salvarResposta.mutate({
       pesquisaId,
       campoId: 'aceite_participacao',
@@ -387,7 +412,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
               >
                 <path 
                   d="M15 18L9 12L15 6" 
-                  stroke="#20B2AA" 
+                  stroke="#1a9bff" 
                   strokeWidth="3" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
@@ -483,7 +508,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                     <div style={{ 
                       width: `${progresso}%`, 
                       height: '100%', 
-                      backgroundColor: '#20B2AA',
+                      backgroundColor: '#1a9bff',
                       transition: 'width 0.3s ease'
                     }}></div>
                   </div>
@@ -507,6 +532,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                 totalPerguntas={totalPerguntas}
                 onPerguntei={handlePerguntei}
                 preCandidato={nomeCandidato || formulario.preCandidato}
+                textoAdaptado={adaptarTextoPorGenero(perguntaAtual.label, generoEntrevistado)}
               />
             </>
           )}

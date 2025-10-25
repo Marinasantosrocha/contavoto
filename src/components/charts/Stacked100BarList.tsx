@@ -18,9 +18,9 @@ interface Stacked100BarListProps {
 const COLORS: Record<string, string> = {
   'Piorou': '#FF7B7B', // vermelho claro
   'Está Igual': '#64748B', // cinza escuro
-  'Melhorou': '#20B2AA', // primária
+  'Melhorou': '#1a9bff', // primária
   'Não sei': '#CBD5E1', // cinza claro
-  'Sim': '#20B2AA',
+  'Sim': '#1a9bff',
   'Não': '#FF7B7B',
 };
 
@@ -55,7 +55,7 @@ export function Stacked100BarList({ rows, height = 52, onSegmentClick }: Stacked
                       key={k}
                       dataKey={k}
                       stackId="a"
-                      fill={COLORS[k] || '#20B2AA'}
+                      fill={COLORS[k] || '#242c30'}
                       radius={idx === keys.length - 1 ? [0, 8, 8, 0] : idx === 0 ? [8, 0, 0, 8] : 0}
                       isAnimationActive
                       onClick={() => onSegmentClick?.(row.key, k)}

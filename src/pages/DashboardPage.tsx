@@ -160,7 +160,7 @@ export const DashboardPage = ({
   const scaleColors: Record<string, string> = {
     'Piorou': '#FF7B7B',
     'Está Igual': '#64748B',
-    'Melhorou': '#20B2AA',
+    'Melhorou': '#1a9bff',
     'Não sei': '#CBD5E1',
   };
 
@@ -195,7 +195,7 @@ export const DashboardPage = ({
             >
               <path 
                 d="M15 18L9 12L15 6" 
-                stroke="#20B2AA" 
+                stroke="#1a9bff" 
                 strokeWidth="3" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -304,9 +304,9 @@ export const DashboardPage = ({
             right={(
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   {Object.entries(opcoesSelecionadas).filter(([,v]) => !!v).map(([k, v]) => (
-                    <span key={k} style={{ background: 'rgba(32,178,170,0.12)', color: '#20B2AA', border: '1px solid #20B2AA', borderRadius: 16, padding: '2px 8px', fontSize: 12 }}>
+                    <span key={k} style={{ background: 'rgba(26,155,255,0.12)', color: '#1a9bff', border: '1px solid #1a9bff', borderRadius: 16, padding: '2px 8px', fontSize: 12 }}>
                       {getFieldLabel(k)}: {v}
-                      <button onClick={() => clearSelection(k)} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: '#20B2AA', cursor: 'pointer' }}>×</button>
+                      <button onClick={() => clearSelection(k)} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: '#1a9bff', cursor: 'pointer' }}>×</button>
                     </span>
                   ))}
                   {Object.values(opcoesSelecionadas).some(Boolean) && (
@@ -503,7 +503,7 @@ export const DashboardPage = ({
                         fontSize: '14px'
                       }}>
                         <span style={{ color: '#6b7280' }}>Duração média da entrevista</span>
-                        <span style={{ fontWeight: '600', color: '#20B2AA' }}>
+                        <span style={{ fontWeight: '600', color: '#1a9bff' }}>
                           {item.duracao_media_minutos?.toFixed(1) || '0'} min
                         </span>
                       </div>
@@ -517,7 +517,7 @@ export const DashboardPage = ({
                         <div style={{ 
                           width: `${Math.min((item.duracao_media_minutos / 30) * 100, 100)}%`, 
                           height: '100%', 
-                          backgroundColor: '#20B2AA',
+                          backgroundColor: '#1a9bff',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'flex-end',

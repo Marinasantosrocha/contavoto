@@ -3,7 +3,7 @@ import '../styles/design-system.css';
 import './AceiteParticipacao.css';
 
 interface AceiteParticipacaoProps {
-  onAceite: () => void;
+  onAceite: (genero: 'masculino' | 'feminino') => void;
   onRecusa: (motivo: string) => void;
   candidato?: string; // Nome do candidato (opcional)
 }
@@ -82,9 +82,16 @@ export default function AceiteParticipacao({
       <div className="aceite-botoes">
         <button 
           className="aceite-btn sim" 
-          onClick={onAceite}
+          onClick={() => onAceite('feminino')}
         >
-          Sim
+          Sim, Mulher
+        </button>
+
+        <button 
+          className="aceite-btn sim" 
+          onClick={() => onAceite('masculino')}
+        >
+          Sim, Homem
         </button>
         
         <button 

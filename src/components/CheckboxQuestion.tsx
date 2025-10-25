@@ -8,6 +8,7 @@ interface CheckboxQuestionProps {
   totalPerguntas: number;
   onPerguntei: () => void;
   preCandidato?: string;
+  textoAdaptado?: string; // Texto já adaptado por gênero (opcional)
 }
 
 /**
@@ -20,7 +21,8 @@ export default function CheckboxQuestion({
   numeroPergunta,
   totalPerguntas,
   onPerguntei,
-  preCandidato
+  preCandidato,
+  textoAdaptado
 }: CheckboxQuestionProps) {
   const [perguntei, setPerguntei] = useState(false);
   
@@ -41,22 +43,13 @@ export default function CheckboxQuestion({
   };
 
   // Formatar label da pergunta (substituir {candidato} se existir)
-  const labelFormatado = campo.label.replace(
-    /{candidato}/gi,
-    preCandidato || 'candidato'
-  );
+  // Se textoAdaptado foi passado, usar ele; senão usar o label original
+  let labelFormatado = textoAdaptado 
+    ? textoAdaptado.replace(/{candidato}/gi, preCandidato || 'candidato')
+    : campo.label.replace(/{candidato}/gi, preCandidato || 'candidato');
 
-  // Converter Markdown simples (negrito) para JSX
-  const renderizarLabel = (texto: string) => {
-    const partes = texto.split(/(\*\*.*?\*\*)/g);
-    return partes.map((parte, index) => {
-      if (parte.startsWith('**') && parte.endsWith('**')) {
-        const textoNegrito = parte.slice(2, -2);
-        return <strong key={index}>{textoNegrito}</strong>;
-      }
-      return parte;
-    });
-  };
+  // Converter Markdown para HTML (negritos **texto** para <strong>texto</strong>)
+  labelFormatado = labelFormatado.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
   return (
     <div className="checkbox-question-container">
@@ -78,7 +71,7 @@ export default function CheckboxQuestion({
           </label>
         </div>
 
-        <h2 className="question-text">{renderizarLabel(labelFormatado)}</h2>
+        <h2 className="question-text" dangerouslySetInnerHTML={{ __html: labelFormatado }}></h2>
 
         {/* Mostrar opções se houver (radio, checkbox, select) */}
         {campo.opcoes && campo.opcoes.length > 0 && (

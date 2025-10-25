@@ -29,7 +29,7 @@ export const Avatar = ({
         height: `${tamanho}px`,
         borderRadius: '50%',
         overflow: 'hidden',
-        backgroundColor: fotoUrl ? 'transparent' : '#20B2AA',
+        backgroundColor: fotoUrl ? 'transparent' : '#242c30',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

@@ -42,7 +42,7 @@
 }
 
 .custom-select-trigger.open {
-  border-color: #20B2AA;
+  border-color: #1a9bff;
   box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
   background-color: #ffffff !important;
   z-index: 999;
@@ -118,8 +118,8 @@
 }
 
 .custom-select-dropdown .custom-select-option.selected {
-  background: #20B2AA !important;
-  background-color: #20B2AA !important;
+  background: #1a9bff !important;
+  background-color: #1a9bff !important;
   color: white !important;
   font-weight: 500;
 }

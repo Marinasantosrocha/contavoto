@@ -7,9 +7,9 @@
    ========================================== */
 :root {
   /* Cores Principais */
-  --primary-color: #20B2AA;
-  --primary-teal: #20B2AA;
-  --primary-teal-dark: #1A9B94;
+  --primary-color: #1a9bff;
+  --primary-teal: #1a9bff;
+  --primary-teal-dark: #1580e6;
   --primary-yellow: #FFD700;
   --primary-yellow-dark: #E6C200;
   
@@ -177,7 +177,7 @@ body {
 }
 
 .status-dot.online {
-  background-color: #10b981;
+  background-color: #1a9bff;
 }
 
 .status-dot.offline {
@@ -203,7 +203,7 @@ body {
 }
 
 .user-menu-button:hover {
-  background-color: rgba(32, 178, 170, 0.1);
+  background-color: rgba(26, 155, 255, 0.1);
 }
 
 .user-menu-dropdown {
@@ -417,14 +417,14 @@ body {
 
 /* Cores */
 .btn-primary {
-  background: rgba(32, 178, 170, 0.1);
+  background: rgba(26, 155, 255, 0.1);
   color: var(--primary-teal);
-  border: 1px solid rgba(32, 178, 170, 0.3);
+  border: 1px solid rgba(26, 155, 255, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: rgba(32, 178, 170, 0.2);
-  border-color: rgba(32, 178, 170, 0.5);
+  background: rgba(26, 155, 255, 0.2);
+  border-color: rgba(26, 155, 255, 0.5);
   transform: none;
   box-shadow: none;
 }
@@ -590,8 +590,8 @@ body {
 .form-select:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: #20B2AA;
-  box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+  border-color: #242c30;
+  box-shadow: none;
   z-index: 100;
 }
 
@@ -971,7 +971,7 @@ input:checked + .slider:before {
 }
 
 .slider:hover {
-  box-shadow: 0 0 8px rgba(32, 178, 170, 0.3);
+  box-shadow: 0 0 8px rgba(26, 155, 255, 0.3);
 }
 
 /* ==========================================
