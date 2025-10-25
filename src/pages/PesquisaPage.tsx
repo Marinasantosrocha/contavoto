@@ -46,6 +46,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [aceitouVerVideo, setAceitouVerVideo] = useState<boolean | null>(null);
   const [mostrarVideoAgradecimento, setMostrarVideoAgradecimento] = useState(false);
   const [mostrarTelaVideo, setMostrarTelaVideo] = useState(false);
+  const [videoJaIniciado, setVideoJaIniciado] = useState(false);
 
   // Função para adaptar texto das perguntas baseado no gênero
   const adaptarTextoPorGenero = (texto: string, genero: 'masculino' | 'feminino' | null): string => {
@@ -301,42 +302,116 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     // Tela de vídeo em tela cheia
     if (mostrarTelaVideo) {
       return (
-        <div className="app-container">
-          <main className="main-content" style={{ padding: 0 }}>
+        <div className="app-container" style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999,
+          backgroundColor: '#000'
+        }}>
+          <style>{`
+            @media screen and (orientation: landscape) {
+              html {
+                transform: rotate(-90deg);
+                transform-origin: left top;
+                width: 100vh;
+                height: 100vw;
+                overflow-x: hidden;
+                position: absolute;
+                top: 100%;
+                left: 0;
+              }
+            }
+          `}</style>
+          <main className="main-content" style={{ padding: 0, height: '100vh' }}>
             <div style={{ 
               display: 'flex', 
               flexDirection: 'column', 
               height: '100vh',
-              backgroundColor: '#000'
+              backgroundColor: '#000',
+              position: 'relative'
             }}>
               <video
+                id="video-lagoa"
                 controls
-                autoPlay
                 preload="auto"
                 style={{ 
-                  width: 'auto',
-                  maxWidth: '100%',
-                  height: 'calc(100vh - 80px)',
-                  margin: '0 auto',
+                  width: '100%',
+                  height: 'calc(100vh - 100px)',
+                  maxHeight: 'calc(100vh - 100px)',
                   display: 'block',
-                  objectFit: 'contain'
+                  objectFit: 'contain',
+                  backgroundColor: '#000'
                 }}
                 src="/Lagoa_dos_patos.mp4"
               >
                 Seu navegador não suporta o elemento de vídeo.
               </video>
+              
+              {/* Botão Play centralizado - aparece apenas se o vídeo não foi iniciado */}
+              {!videoJaIniciado && (
+                <div 
+                  onClick={() => {
+                    const video = document.getElementById('video-lagoa') as HTMLVideoElement;
+                    if (video) {
+                      video.play();
+                      setVideoJaIniciado(true);
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '80px',
+                    height: '80px',
+                    backgroundColor: 'rgba(26, 155, 255, 0.9)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    transition: 'all 0.3s ease',
+                    zIndex: 10
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(26, 155, 255, 1)';
+                    e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(26, 155, 255, 0.9)';
+                    e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)';
+                  }}
+                >
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+              )}
+              
               <div style={{ 
                 padding: '1rem', 
                 backgroundColor: '#fff',
-                height: '80px',
+                minHeight: '100px',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                gap: '0.5rem'
               }}>
                 <button
                   onClick={handleFinalizar}
-                  className="btn btn-primary btn-large"
-                  style={{ width: '100%', maxWidth: '400px' }}
+                  className="btn btn-primary"
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: '400px',
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: '600'
+                  }}
                   disabled={finalizarPesquisa.isPending}
                 >
                   {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}

@@ -45,6 +45,20 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="auth-page login-page">
+      <style>{`
+        @media screen and (orientation: landscape) {
+          html {
+            transform: rotate(-90deg);
+            transform-origin: left top;
+            width: 100vh;
+            height: 100vw;
+            overflow-x: hidden;
+            position: absolute;
+            top: 100%;
+            left: 0;
+          }
+        }
+      `}</style>
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">

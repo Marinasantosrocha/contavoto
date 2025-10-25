@@ -368,7 +368,14 @@ export const HomePage = ({
                 <div className="card">
                   <div className="page-section">
                     <div className="form-group">
-                      <label className="form-label" style={{ textAlign: 'center', display: 'block' }}>Endereço</label>
+                      <label className="form-label" style={{ 
+                        textAlign: 'center', 
+                        display: 'block',
+                        fontSize: '1.5rem',
+                        fontWeight: '600',
+                        color: '#1a9bff',
+                        marginBottom: '1.5rem'
+                      }}>Endereço</label>
                     </div>
 
                     <div className="form-group">
@@ -447,8 +454,13 @@ export const HomePage = ({
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: '-2rem' }}>
                     <button
                       onClick={handleIniciar}
-                      className="btn btn-primary"
-                      style={{ width: '100%', padding: '0.7rem 1.5rem' }}
+                      className="btn btn-primary btn-large"
+                      style={{ 
+                        width: '100%', 
+                        padding: '1rem 2rem',
+                        fontSize: '1.1rem',
+                        fontWeight: '600'
+                      }}
                       disabled={
                         criarPesquisa.isPending || 
                         !endereco.trim() || 
