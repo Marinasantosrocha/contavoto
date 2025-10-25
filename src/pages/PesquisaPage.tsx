@@ -45,6 +45,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [perguntasFeitas, setPerguntasFeitas] = useState<{ [campoId: string]: boolean }>({});
   const [aceitouVerVideo, setAceitouVerVideo] = useState<boolean | null>(null);
   const [mostrarVideoAgradecimento, setMostrarVideoAgradecimento] = useState(false);
+  const [mostrarTelaVideo, setMostrarTelaVideo] = useState(false);
 
   // Função para adaptar texto das perguntas baseado no gênero
   const adaptarTextoPorGenero = (texto: string, genero: 'masculino' | 'feminino' | null): string => {
@@ -297,6 +298,56 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
   // Tela de Encerramento
   if (mostrarEncerramento) {
+    // Tela de vídeo em tela cheia
+    if (mostrarTelaVideo) {
+      return (
+        <div className="app-container">
+          <main className="main-content" style={{ padding: 0 }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              height: '100vh',
+              backgroundColor: '#000'
+            }}>
+              <video
+                controls
+                autoPlay
+                preload="auto"
+                style={{ 
+                  width: 'auto',
+                  maxWidth: '100%',
+                  height: 'calc(100vh - 80px)',
+                  margin: '0 auto',
+                  display: 'block',
+                  objectFit: 'contain'
+                }}
+                src="/lagoa_dos_patos.mov"
+              >
+                Seu navegador não suporta o elemento de vídeo.
+              </video>
+              <div style={{ 
+                padding: '1rem', 
+                backgroundColor: '#fff',
+                height: '80px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={handleFinalizar}
+                  className="btn btn-primary btn-large"
+                  style={{ width: '100%', maxWidth: '400px' }}
+                  disabled={finalizarPesquisa.isPending}
+                >
+                  {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="app-container">
         {/* Header oculto no encerramento */}
@@ -318,69 +369,34 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                   Posso te mostrar agora rapidinho?
                 </p>
 
-                {aceitouVerVideo === null && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={async () => { 
-                        await pararGravacao();
-                        setAceitouVerVideo(true); 
-                        setMostrarVideoAgradecimento(true); 
-                      }}
-                    >
-                      Mostrar vídeo agora
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Vídeo de agradecimento (offline-ready) */}
-            {aceitouVerVideo === true && (
-              <div className="card">
-                {!mostrarVideoAgradecimento ? (
+                {/* Botões lado a lado */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '1fr 1fr', 
+                  gap: '1rem', 
+                  marginTop: '1.5rem' 
+                }}>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={async () => { 
+                      await pararGravacao();
+                      setMostrarTelaVideo(true);
+                    }}
+                  >
+                    Mostrar vídeo
+                  </button>
                   <button
                     onClick={async () => {
                       await pararGravacao();
-                      setMostrarVideoAgradecimento(true);
+                      handleFinalizar();
                     }}
-                    className="btn btn-secondary w-full"
+                    className="btn btn-primary"
+                    disabled={finalizarPesquisa.isPending}
                   >
-                    Assistir vídeo de agradecimento
+                    {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
                   </button>
-                ) : (
-                  <div>
-                    <video
-                      controls
-                      preload="auto"
-                      style={{ width: '100%', borderRadius: '12px' }}
-                      src="/agradecimento.mp4"
-                      onLoadedMetadata={(e) => {
-                        const videoElement = e.currentTarget;
-                        videoElement.requestFullscreen?.().catch(err => {
-                          console.log('Não foi possível entrar em tela cheia:', err);
-                        });
-                      }}
-                    >
-                      Seu navegador não suporta o elemento de vídeo.
-                    </video>
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '8px' }}>
-                      Dica: o vídeo é salvo para uso offline após a primeira visualização. Se não carregar,
-                      conecte-se à internet uma vez para baixar.
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
-            )}
-
-            <div className="card">
-              <button
-                onClick={handleFinalizar}
-                className="btn btn-primary btn-large w-full"
-                disabled={finalizarPesquisa.isPending}
-              >
-                {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
-              </button>
             </div>
           </div>
         </main>

@@ -7,12 +7,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo.png', 'apple-touch-icon.png', 'agradecimento.mp4'],
+      includeAssets: ['favicon.ico', 'logo.png', 'apple-touch-icon.png', 'lagoa_dos_patos.mov'],
           manifest: {
             name: 'OpineAi - Sistema de Pesquisa de Campo',
             short_name: 'OpineAi',
             description: 'Sistema de pesquisa de campo que funciona offline',
-  theme_color: '#1a9bff',
+  theme_color: '#6C757D',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'any',
@@ -44,7 +44,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp4,webm,ogg}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp4,webm,ogg,mov}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,

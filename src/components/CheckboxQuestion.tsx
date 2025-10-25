@@ -83,7 +83,7 @@ export default function CheckboxQuestion({
               listStyle: 'none',
               padding: 0
             }}>
-              {campo.opcoes.map((opcao, index) => (
+              {campo.opcoes?.map((opcao, index) => (
                 <li key={index} className="option-item" style={{
                   padding: '0.75rem 1rem',
                   backgroundColor: '#f3f4f6',
@@ -91,7 +91,7 @@ export default function CheckboxQuestion({
                   textAlign: 'center',
                   fontSize: '0.9rem',
                   // Se for a 5ª opção (index 4) de uma lista de 5 opções, ocupar toda a largura
-                  gridColumn: campo.opcoes.length === 5 && index === 4 ? '1 / -1' : 'auto'
+                  gridColumn: campo.opcoes?.length === 5 && index === 4 ? '1 / -1' : 'auto'
                 }}>
                   {opcao}
                 </li>

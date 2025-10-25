@@ -20,10 +20,21 @@ Promise.all(
     const outputFile = path.join(outputDir, `pwa-${size}x${size}.png`);
     
     try {
+      // Adiciona padding de 10% do tamanho
+      const padding = Math.floor(size * 0.1);
+      const iconSize = size - (padding * 2);
+      
       await sharp(inputFile)
-        .resize(size, size, {
+        .resize(iconSize, iconSize, {
           fit: 'contain',
-          background: { r: 255, g: 255, b: 255, alpha: 0 }
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        })
+        .extend({
+          top: padding,
+          bottom: padding,
+          left: padding,
+          right: padding,
+          background: { r: 255, g: 255, b: 255, alpha: 1 } // Fundo branco
         })
         .png()
         .toFile(outputFile);
