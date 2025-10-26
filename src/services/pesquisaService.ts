@@ -192,25 +192,6 @@ export class PesquisaService {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const usuario_id = user.id;
 
-    // Tenta obter geolocalização
-    let latitude: number | undefined;
-    let longitude: number | undefined;
-    
-    if ('geolocation' in navigator) {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 5000,
-            enableHighAccuracy: false,
-          });
-        });
-        latitude = position.coords.latitude;
-        longitude = position.coords.longitude;
-      } catch (error) {
-        console.log('Geolocalização não disponível:', error);
-      }
-    }
-
     const id = await db.pesquisas.add({
       formularioId,
       formularioUuid: formulario.uuid,
@@ -224,8 +205,6 @@ export class PesquisaService {
       iniciadaEm: new Date(),
       status: 'em_andamento',
       sincronizado: false,
-      latitude,
-      longitude,
     });
 
     return Number(id);

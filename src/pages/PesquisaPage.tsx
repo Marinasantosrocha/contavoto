@@ -302,41 +302,61 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     // Tela de vídeo em tela cheia
     if (mostrarTelaVideo) {
       return (
-        <div className="app-container" style={{ 
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          zIndex: 9999,
-          backgroundColor: '#000',
-          overflow: 'hidden'
-        }}>
-          <main className="main-content" style={{ padding: 0, height: '100vh', width: '100vw' }}>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              height: '100vh',
-              width: '100vw',
-              backgroundColor: '#000',
-              position: 'relative'
-            }}>
-              <video
-                id="video-lagoa"
-                controls
-                preload="auto"
-                style={{ 
-                  width: '100%',
-                  height: 'calc(100% - 100px)',
-                  maxHeight: 'calc(100% - 100px)',
-                  display: 'block',
-                  objectFit: 'contain',
-                  backgroundColor: '#000'
-                }}
-                src="/Lagoa_dos_patos.mp4"
-              >
-                Seu navegador não suporta o elemento de vídeo.
-              </video>
+        <>
+          <style>{`
+            @media screen and (orientation: landscape) {
+              html {
+                transform: rotate(-90deg);
+                transform-origin: left top;
+                width: 100vh;
+                height: 100vw;
+                overflow-x: hidden;
+                position: absolute;
+                top: 100%;
+                left: 0;
+              }
+              body {
+                width: 100vh;
+                height: 100vw;
+                overflow: hidden;
+              }
+            }
+          `}</style>
+          <div className="app-container" style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 9999,
+            backgroundColor: '#000',
+            overflow: 'hidden'
+          }}>
+            <main className="main-content" style={{ padding: 0, height: '100%', width: '100%' }}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '100%',
+                width: '100%',
+                backgroundColor: '#000',
+                position: 'relative'
+              }}>
+                <video
+                  id="video-lagoa"
+                  controls
+                  preload="auto"
+                  style={{ 
+                    width: '100%',
+                    height: 'calc(100% - 100px)',
+                    maxHeight: 'calc(100% - 100px)',
+                    display: 'block',
+                    objectFit: 'contain',
+                    backgroundColor: '#000'
+                  }}
+                  src="/Lagoa_dos_patos.mp4"
+                >
+                  Seu navegador não suporta o elemento de vídeo.
+                </video>
               
               {/* Botão Play centralizado - aparece apenas se o vídeo não foi iniciado */}
               {!videoJaIniciado && (
@@ -383,7 +403,8 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
               <div style={{ 
                 padding: '1rem', 
                 backgroundColor: '#fff',
-                minHeight: '100px',
+                height: '100px',
+                flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -408,6 +429,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
             </div>
           </main>
         </div>
+        </>
       );
     }
 
