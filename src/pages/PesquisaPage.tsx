@@ -46,7 +46,6 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [aceitouVerVideo, setAceitouVerVideo] = useState<boolean | null>(null);
   const [mostrarVideoAgradecimento, setMostrarVideoAgradecimento] = useState(false);
   const [mostrarTelaVideo, setMostrarTelaVideo] = useState(false);
-  const [videoJaIniciado, setVideoJaIniciado] = useState(false);
 
   // Função para adaptar texto das perguntas baseado no gênero
   const adaptarTextoPorGenero = (texto: string, genero: 'masculino' | 'feminino' | null): string => {
@@ -357,48 +356,6 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                 >
                   Seu navegador não suporta o elemento de vídeo.
                 </video>
-              
-              {/* Botão Play centralizado - aparece apenas se o vídeo não foi iniciado */}
-              {!videoJaIniciado && (
-                <div 
-                  onClick={() => {
-                    const video = document.getElementById('video-lagoa') as HTMLVideoElement;
-                    if (video) {
-                      video.play();
-                      setVideoJaIniciado(true);
-                    }
-                  }}
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '80px',
-                    height: '80px',
-                    backgroundColor: 'rgba(26, 155, 255, 0.9)',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                    transition: 'all 0.3s ease',
-                    zIndex: 10
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(26, 155, 255, 1)';
-                    e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(26, 155, 255, 0.9)';
-                    e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)';
-                  }}
-                >
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-              )}
               
               <div style={{ 
                 padding: '1rem', 
