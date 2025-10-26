@@ -134,7 +134,7 @@ export const LoginPage: React.FC = () => {
             />
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
             <input
               id="password"
               type="password"
