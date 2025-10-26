@@ -17,7 +17,7 @@ export const RegisterPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [tipoUsuario, setTipoUsuario] = useState<number | null>(null);
-  const [candidato, setCandidato] = useState('');
+  const [candidato, setCandidato] = useState('Pedro Braga');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -68,17 +68,13 @@ export const RegisterPage: React.FC = () => {
       // Mostrar mensagem de sucesso
       setSuccessMessage('Usuário criado com sucesso!');
       
-      // Limpar formulário
-      setNome('');
-      setTelefone('');
-      setPassword('');
-      setConfirmPassword('');
-      setTipoUsuario(null);
-      setCandidato('');
+      // Aguardar 1 segundo e redirecionar para a página de permissões
+      setTimeout(() => {
+        navigate('/permissions');
+      }, 1000);
     } catch (error: any) {
       console.error('Erro no registro:', error);
       setError(error.message || 'Erro ao criar conta. Tente novamente.');
-    } finally {
       setIsLoading(false);
     }
   };
