@@ -309,27 +309,15 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
           width: '100vw',
           height: '100vh',
           zIndex: 9999,
-          backgroundColor: '#000'
+          backgroundColor: '#000',
+          overflow: 'hidden'
         }}>
-          <style>{`
-            @media screen and (orientation: landscape) {
-              html {
-                transform: rotate(-90deg);
-                transform-origin: left top;
-                width: 100vh;
-                height: 100vw;
-                overflow-x: hidden;
-                position: absolute;
-                top: 100%;
-                left: 0;
-              }
-            }
-          `}</style>
-          <main className="main-content" style={{ padding: 0, height: '100vh' }}>
+          <main className="main-content" style={{ padding: 0, height: '100vh', width: '100vw' }}>
             <div style={{ 
               display: 'flex', 
               flexDirection: 'column', 
               height: '100vh',
+              width: '100vw',
               backgroundColor: '#000',
               position: 'relative'
             }}>
@@ -339,8 +327,8 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                 preload="auto"
                 style={{ 
                   width: '100%',
-                  height: 'calc(100vh - 100px)',
-                  maxHeight: 'calc(100vh - 100px)',
+                  height: 'calc(100% - 100px)',
+                  maxHeight: 'calc(100% - 100px)',
                   display: 'block',
                   objectFit: 'contain',
                   backgroundColor: '#000'

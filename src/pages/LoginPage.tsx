@@ -91,17 +91,22 @@ export const LoginPage: React.FC = () => {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <h1 style={{
-          color: '#fff',
-          fontSize: '2.5rem',
-          fontWeight: '500',
-          letterSpacing: '0.1em',
-          marginBottom: '1.5rem',
-          textTransform: 'none',
-          fontFamily: "'Poppins', sans-serif"
+        <div style={{
+          width: '100%',
+          maxWidth: '400px'
         }}>
-          Bem-vindo
-        </h1>
+          <h1 style={{
+            color: '#fff',
+            fontSize: '2.5rem',
+            fontWeight: '500',
+            letterSpacing: '0.1em',
+            marginBottom: '1.5rem',
+            textTransform: 'none',
+            fontFamily: "'Poppins', sans-serif"
+          }}>
+            Bem-vindo
+          </h1>
+        </div>
         
         <form onSubmit={handleLogin} style={{
           width: '100%',
