@@ -292,6 +292,8 @@ export class PesquisaService {
   static async buscarPesquisas(filtro?: {
     status?: 'em_andamento' | 'finalizada' | 'cancelada';
     formularioId?: number;
+    entrevistador?: string;
+    comAudio?: boolean;
   }) {
     let query = db.pesquisas.filter(p => !p.deletado);
 
@@ -301,6 +303,14 @@ export class PesquisaService {
 
     if (filtro?.formularioId) {
       query = query.filter(p => p.formularioId === filtro.formularioId);
+    }
+
+    if (filtro?.entrevistador) {
+      query = query.filter(p => p.entrevistador === filtro.entrevistador);
+    }
+
+    if (filtro?.comAudio) {
+      query = query.filter(p => !!p.audio_url);
     }
 
     return await query.reverse().sortBy('iniciadaEm');

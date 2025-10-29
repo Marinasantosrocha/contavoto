@@ -23,8 +23,8 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   const [playingId, setPlayingId] = useState<number | null>(null);
   const audioMapRef = useMemo(() => new Map<number, HTMLAudioElement>(), []);
   // Admin (Super) - estados
-  const [adminFormOptions, setAdminFormOptions] = useState<Array<{value: string, label: string}>>([]);
-  const [adminFormSel, setAdminFormSel] = useState<string>('all');
+  const [adminEntrevistadorOptions, setAdminEntrevistadorOptions] = useState<Array<{value: string, label: string}>>([]);
+  const [adminEntrevistadorSel, setAdminEntrevistadorSel] = useState<string>('all');
   const [adminPesquisas, setAdminPesquisas] = useState<any[]>([]);
   const [adminLoading, setAdminLoading] = useState<boolean>(false);
   const [adminMapForm, setAdminMapForm] = useState<Record<string, any>>({});
@@ -156,19 +156,30 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     return badges[status as keyof typeof badges] || badges.em_andamento;
   };
 
-  // Carregar opções de formulários (somente admin)
+  // Carregar opções de entrevistadores (somente admin)
   useEffect(() => {
     if (!isSuperAdmin) return;
     let cancel = false;
     (async () => {
       try {
-        const { data, error } = await supabase.from('formularios').select('id,nome').order('nome');
+        const { data, error } = await supabase
+          .from('pesquisas')
+          .select('entrevistador')
+          .not('entrevistador', 'is', null)
+          .not('audio_url', 'is', null); // Apenas pesquisas com áudio
+        
         if (error) throw error;
         if (cancel) return;
-        const opts = [{ value: 'all', label: 'Todos os formulários' }, ...(data || []).map((f: any) => ({ value: f.id, label: f.nome }))];
-        setAdminFormOptions(opts);
+        
+        // Extrair entrevistadores únicos
+        const entrevistadoresUnicos = [...new Set((data || []).map((p: any) => p.entrevistador))].sort();
+        const opts = [
+          { value: 'all', label: 'Todos os entrevistadores' }, 
+          ...entrevistadoresUnicos.map((e: string) => ({ value: e, label: e }))
+        ];
+        setAdminEntrevistadorOptions(opts);
       } catch (e) {
-        setAdminFormOptions([{ value: 'all', label: 'Todos os formulários' }]);
+        setAdminEntrevistadorOptions([{ value: 'all', label: 'Todos os entrevistadores' }]);
       }
     })();
     return () => { cancel = true; };
@@ -181,14 +192,15 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     (async () => {
       setAdminLoading(true);
       try {
-        // 1) Pesquisas (filtradas por formulário se selecionado)
+        // 1) Pesquisas (filtradas por entrevistador e apenas com áudio)
         let query = supabase
           .from('pesquisas')
           .select('id, formulario_id, formulario_nome, endereco, bairro, cidade, entrevistador, iniciada_em, status, audio_url, audio_duracao, respostas_ia, observacoes_ia')
+          .not('audio_url', 'is', null) // Apenas pesquisas com áudio
           .order('iniciada_em', { ascending: false })
           .range(0, Math.max(0, adminLimit - 1));
-        if (adminFormSel !== 'all') {
-          query = query.eq('formulario_id', adminFormSel);
+        if (adminEntrevistadorSel !== 'all') {
+          query = query.eq('entrevistador', adminEntrevistadorSel);
         }
         const { data: pesqData, error: pesqErr } = await query;
         if (pesqErr) throw pesqErr;
@@ -233,13 +245,13 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
       }
     })();
     return () => { cancel = true; };
-  }, [isSuperAdmin, adminFormSel, adminLimit]);
+  }, [isSuperAdmin, adminEntrevistadorSel, adminLimit]);
 
   // Resetar limite ao trocar o filtro
   useEffect(() => {
     if (!isSuperAdmin) return;
     setAdminLimit(20);
-  }, [adminFormSel, isSuperAdmin]);
+  }, [adminEntrevistadorSel, isSuperAdmin]);
 
   if (isSuperAdmin) {
     return (
@@ -276,10 +288,10 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
           <div className="page-section">
             <div className="form-group">
               <CustomSelect
-                label="Filtrar por formulário"
-                options={adminFormOptions}
-                value={adminFormSel}
-                onChange={(v) => setAdminFormSel((v as string) || 'all')}
+                label="Filtrar por entrevistador"
+                options={adminEntrevistadorOptions}
+                value={adminEntrevistadorSel}
+                onChange={(v) => setAdminEntrevistadorSel((v as string) || 'all')}
               />
             </div>
           </div>

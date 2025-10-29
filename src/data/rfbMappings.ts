@@ -8,11 +8,6 @@ export interface RfbFieldConfig {
 }
 
 export const RFB_FIELDS: RfbFieldConfig[] = [
-  { key: 'faixa_etaria', label: 'Faixa Etária', type: 'ordinal', order: [
-    '16 ou menos anos', 'De 17 a 24 anos', 'De 25 a 34 anos', 'De 35 a 45 anos', 'De 46 a 54 anos', '55 ou mais anos'
-  ]},
-  { key: 'tempo_moradia', label: 'Tempo de Moradia', type: 'ordinal' },
-
   // Infraestrutura
   { key: 'pavimentacao', label: 'Pavimentação', type: 'scale3', order: ['Piorou', 'Está Igual', 'Melhorou', 'Não sei'] },
   { key: 'estradas', label: 'Estradas', type: 'scale3', order: ['Piorou', 'Está Igual', 'Melhorou', 'Não sei'] },

@@ -3,7 +3,7 @@ import { useEstatisticasPesquisas, usePesquisas, usePesquisadores } from '../hoo
 import { useFormularios } from '../hooks/useFormularios';
 import { useRfbAnalytics } from '../hooks/useRfbAnalytics';
 import { useProdutividade } from '../hooks/useProdutividade';
-import { RFB_FIELDS, getFieldLabel } from '../data/rfbMappings';
+import { RFB_FIELDS, getFieldLabel, orderEntries } from '../data/rfbMappings';
 import { BottomNav } from '../components/BottomNav';
 import { ChartCard } from '../components/ChartCard';
 import { DonutChart } from '../components/charts/DonutChart';
@@ -25,7 +25,7 @@ export const DashboardPage = ({
 }: DashboardPageProps) => {
   const [periodoSelecionado, setPeriodoSelecionado] = useState<Periodo>('hoje');
   const [pesquisadorSelecionado, setPesquisadorSelecionado] = useState<number | null>(null);
-  const [formularioSelecionado] = useState<string | null>(null);
+  const [formularioSelecionado, setFormularioSelecionado] = useState<string | null>(null);
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
   const [bairroSelecionado, setBairroSelecionado] = useState<string | null>(null);
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<Record<string, string | null>>({});
@@ -142,6 +142,14 @@ export const DashboardPage = ({
     bairro: bairroSelecionado,
     categorySelections: opcoesSelecionadas,
   });
+
+
+  const scaleColors: Record<string, string> = {
+    'Piorou': '#FF7B7B',
+    'Está Igual': '#64748B',
+    'Melhorou': '#1a9bff',
+    'Não sei': '#CBD5E1',
+  };
 
   // beautify não é mais usado; labels amigáveis vêm de rfbMappings
 
@@ -304,26 +312,8 @@ export const DashboardPage = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {/* 1) Percepção por Tema (scale3) - barras empilhadas 100% */}
                 <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem', margin: 0 }}>Percepção por Tema</h4>
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <div style={{ width: '12px', height: '12px', backgroundColor: '#1a9bff', borderRadius: '2px' }}></div>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Melhorou</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <div style={{ width: '12px', height: '12px', backgroundColor: '#64748B', borderRadius: '2px' }}></div>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Está Igual</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <div style={{ width: '12px', height: '12px', backgroundColor: '#FF7B7B', borderRadius: '2px' }}></div>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Piorou</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <div style={{ width: '12px', height: '12px', backgroundColor: '#CBD5E1', borderRadius: '2px' }}></div>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Não sei</span>
-                      </div>
-                    </div>
+                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
+                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Percepção por Tema</h4>
                   </div>
                   <Stacked100BarList
                     rows={RFB_FIELDS.filter(f => f.type === 'scale3').map(f => ({
@@ -338,18 +328,8 @@ export const DashboardPage = ({
 
                 {/* 2) Indicadores Binários - barras empilhadas 100% */}
                 <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem', margin: 0 }}>Indicadores de Aprovação</h4>
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <div style={{ width: '12px', height: '12px', backgroundColor: '#1a9bff', borderRadius: '2px' }}></div>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Sim</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <div style={{ width: '12px', height: '12px', backgroundColor: '#FF7B7B', borderRadius: '2px' }}></div>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Não</span>
-                      </div>
-                    </div>
+                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
+                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Indicadores de Aprovação</h4>
                   </div>
                   <Stacked100BarList
                     rows={RFB_FIELDS.filter(f => f.type === 'binary').map(f => ({
@@ -362,7 +342,30 @@ export const DashboardPage = ({
                   />
                 </div>
 
-                {/* 3) Principais Temas (Top 8) - barras horizontais em % */}
+                {/* 3) Perfil: Faixa etária e Tempo de moradia - donuts por campo */}
+                <div className="card" style={{ padding: '0.75rem 1rem' }}>
+                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
+                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Perfil dos Entrevistados</h4>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+                    {RFB_FIELDS.filter(f => f.type === 'ordinal').map(f => {
+                      const dist = rfbAgg.distribuicoes[f.key] || {};
+                      const entries = orderEntries(Object.entries(dist), f.key);
+                      if (entries.length === 0) return null;
+                      const data = entries.map(([name, value]) => ({ name, value }));
+                      return (
+                        <div key={f.key} className="card" style={{ padding: '0.5rem' }}>
+                          <div className="card-header" style={{ padding: '0.25rem 0.5rem' }}>
+                            <h5 className="card-title" style={{ fontSize: '0.95rem' }}>{f.label}</h5>
+                          </div>
+                          <DonutChart data={data} height={240} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4) Principais Temas (Top 8) - barras horizontais em % */}
                 <div className="card" style={{ padding: '0.75rem 1rem' }}>
                   <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
                     <h4 className="card-title" style={{ fontSize: '1rem' }}>Principais Temas</h4>
@@ -388,6 +391,7 @@ export const DashboardPage = ({
             )}
           </ChartCard>
         </div>
+
 
         {/* Motivos de Recusa */}
         {recusaramPeriodo > 0 && (

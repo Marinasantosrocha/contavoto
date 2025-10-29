@@ -28,8 +28,6 @@ export interface TimeseriesPoint {
 
 // Colunas categóricas da rfb que iremos agregar inicialmente
 const COLUMNS: string[] = [
-  'faixa_etaria',
-  'tempo_moradia',
   'pavimentacao',
   'estradas',
   'limpeza_urbana',
@@ -44,6 +42,7 @@ const COLUMNS: string[] = [
   'melhoria_com_representante',
   'prioridade_deputado',
   'autorizacao_contato',
+  'whatsapp',
 ];
 
 // Colunas por tipo para normalização de opções
@@ -62,6 +61,7 @@ const BINARY_COLUMNS = new Set([
   'voz_em_brasilia',
   'melhoria_com_representante',
   'autorizacao_contato',
+  'whatsapp',
 ]);
 
 function getPeriodoBounds(periodo?: PeriodoFiltro): { gte?: string } {
@@ -299,13 +299,6 @@ function normalizeOptionForColumn(column: string, raw: string): string {
   }
 
   if (BINARY_COLUMNS.has(column)) {
-    // autorizacao_contato tem respostas específicas: "Sim, autorizo" ou "Não autorizo"
-    if (column === 'autorizacao_contato') {
-      if (/sim/i.test(v)) return 'Sim';
-      if (/n[ãa]o/i.test(v)) return 'Não';
-    }
-    
-    // Normalização genérica para outros campos binários
     if (/^(sim|s|yes|y|true|1)$/i.test(simple)) return 'Sim';
     if (/^(nao|não|n|no|false|0)$/i.test(simple)) return 'Não';
     return v;
