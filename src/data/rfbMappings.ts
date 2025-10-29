@@ -30,7 +30,7 @@ export const RFB_FIELDS: RfbFieldConfig[] = [
   { key: 'voz_em_brasilia', label: 'Representante com Voz em Brasília?' , type: 'binary', order: ['Sim', 'Não']},
   { key: 'melhoria_com_representante', label: 'Melhoria com Representante?' , type: 'binary', order: ['Sim', 'Não']},
   { key: 'prioridade_deputado', label: 'Prioridade do Deputado', type: 'multi' },
-  { key: 'autorizacao_contato', label: 'Autorizou Contato?', type: 'binary', order: ['Sim', 'Não'] },
+  { key: 'autorizacao_contato', label: 'Autorizou Contato?', type: 'binary', order: ['Sim, autorizo', 'Não autorizo'] },
 ];
 
 export function getFieldLabel(key: string) {

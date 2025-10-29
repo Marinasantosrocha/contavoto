@@ -22,6 +22,8 @@ const COLORS: Record<string, string> = {
   'Não sei': '#CBD5E1', // cinza claro
   'Sim': '#1a9bff',
   'Não': '#FF7B7B',
+  'Sim, autorizo': '#1a9bff', // azul para autorização
+  'Não autorizo': '#FF7B7B', // vermelho para não autorização
 };
 
 export function Stacked100BarList({ rows, height = 52, onSegmentClick }: Stacked100BarListProps) {
