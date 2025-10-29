@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpar Banco Local - IndexedDB</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 2px solid #17a2b8;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .success {
+      background: #d4edda;
+      border: 2px solid #28a745;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    button {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background: #c82333;
+    }
+    button.secondary {
+      background: #6c757d;
+    }
+    button.secondary:hover {
+      background: #5a6268;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .stats {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+    .stats h3 {
+      margin-top: 0;
+    }
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .stat-item:last-child {
+      border-bottom: none;
+    }
+    .stat-label {
+      font-weight: 500;
+    }
+    .stat-value {
+      color: #007bff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 Limpar Banco Local</h1>
+    <p class="subtitle">Ferramenta para limpar dados antigos do IndexedDB</p>
+
+    <div class="warning">
+      <strong>⚠️ ATENÇÃO:</strong> Esta ação irá deletar TODOS os dados locais não sincronizados!
+      <br>Certifique-se de que todas as pesquisas importantes foram sincronizadas antes de continuar.
+    </div>
+
+    <div id="stats" class="stats" style="display: none;">
+      <h3>📊 Dados Atuais no Banco Local:</h3>
+      <div class="stat-item">
+        <span class="stat-label">Formulários:</span>
+        <span class="stat-value" id="countFormularios">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Pesquisas:</span>
+        <span class="stat-value" id="countPesquisas">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Pesquisas não sincronizadas:</span>
+        <span class="stat-value" id="countNaoSinc">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Jobs de mídia:</span>
+        <span class="stat-value" id="countMedia">-</span>
+      </div>
+    </div>
+
+    <div class="info">
+      <strong>ℹ️ O que será limpo:</strong>
+      <ul>
+        <li>Todos os formulários locais</li>
+        <li>Todas as pesquisas (incluindo em andamento)</li>
+        <li>Todos os jobs de mídia pendentes</li>
+        <li>Cache do navegador relacionado ao IndexedDB</li>
+      </ul>
+    </div>
+
+    <div class="success" id="successMsg">
+      ✅ <strong>Banco local limpo com sucesso!</strong><br>
+      Recarregue a página para começar do zero.
+    </div>
+
+    <button onclick="verificarDados()">📊 Verificar Dados Atuais</button>
+    <button onclick="limparTudo()" id="btnLimpar">🗑️ Limpar TUDO</button>
+    <button onclick="limparApenasNaoSincronizados()" class="secondary">🔄 Limpar Apenas Não Sincronizados</button>
+    <button onclick="baixarFormulariosSupabase()" class="secondary" style="background: #28a745;">📥 Baixar Formulários do Supabase</button>
+
+    <br><br>
+    <button onclick="window.location.href='/'" class="secondary">← Voltar para o App</button>
+  </div>
+
+  <script type="module">
+    import Dexie from 'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.mjs';
+
+    // Conecta ao banco local
+    const db = new Dexie('PortaAPortaDB');
+    db.version(2).stores({
+      formularios: '++id, uuid, sincronizado',
+      pesquisas: '++id, uuid, formularioId, status, sincronizado, deletado',
+      mediaJobs: '++id, pesquisaId, uuid, status, tipo, tentativas, criadoEm'
+    });
+
+    window.verificarDados = async function() {
+      try {
+        const countForm = await db.formularios.count();
+        const countPesq = await db.pesquisas.count();
+        const countNaoSinc = await db.pesquisas.filter(p => !p.sincronizado).count();
+        const countMedia = await db.mediaJobs.count();
+
+        document.getElementById('countFormularios').textContent = countForm;
+        document.getElementById('countPesquisas').textContent = countPesq;
+        document.getElementById('countNaoSinc').textContent = countNaoSinc;
+        document.getElementById('countMedia').textContent = countMedia;
+        document.getElementById('stats').style.display = 'block';
+      } catch (error) {
+        alert('Erro ao verificar dados: ' + error.message);
+      }
+    };
+
+    window.limparTudo = async function() {
+      if (!confirm('⚠️ TEM CERTEZA? Todos os dados locais serão DELETADOS permanentemente!')) {
+        return;
+      }
+
+      if (!confirm('⚠️ ÚLTIMA CONFIRMAÇÃO: Deseja realmente continuar?')) {
+        return;
+      }
+
+      document.getElementById('btnLimpar').disabled = true;
+      document.getElementById('btnLimpar').textContent = 'Limpando...';
+
+      try {
+        await db.formularios.clear();
+        await db.pesquisas.clear();
+        await db.mediaJobs.clear();
+
+        document.getElementById('successMsg').style.display = 'block';
+        document.getElementById('stats').style.display = 'none';
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      } catch (error) {
+        alert('Erro ao limpar banco: ' + error.message);
+        document.getElementById('btnLimpar').disabled = false;
+        document.getElementById('btnLimpar').textContent = '🗑️ Limpar TUDO';
+      }
+    };
+
+    window.limparApenasNaoSincronizados = async function() {
+      if (!confirm('Deseja remover apenas as pesquisas NÃO sincronizadas?')) {
+        return;
+      }
+
+      try {
+        const naoSinc = await db.pesquisas.filter(p => !p.sincronizado).toArray();
+        
+        for (const p of naoSinc) {
+          await db.pesquisas.delete(p.id);
+        }
+
+        alert(`✅ ${naoSinc.length} pesquisas não sincronizadas foram removidas.`);
+        await verificarDados();
+      } catch (error) {
+        alert('Erro: ' + error.message);
+      }
+    };
+
+    window.baixarFormulariosSupabase = async function() {
+      if (!navigator.onLine) {
+        alert('❌ Você está offline. Conecte-se à internet para baixar formulários.');
+        return;
+      }
+
+      if (!confirm('Deseja baixar os formulários do Supabase? Isso irá substituir os formulários locais.')) {
+        return;
+      }
+
+      try {
+        // Importa Supabase client
+        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+        
+        // Pega credenciais do .env (você precisa substituir pelos valores reais)
+        const SUPABASE_URL = prompt('Cole a URL do Supabase (ou deixe em branco se já estiver configurado):');
+        const SUPABASE_KEY = prompt('Cole a ANON KEY do Supabase (ou deixe em branco se já estiver configurado):');
+        
+        if (!SUPABASE_URL || !SUPABASE_KEY) {
+          alert('❌ Credenciais não fornecidas. Operação cancelada.');
+          return;
+        }
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        const { data: remotos, error } = await supabase
+          .from('formularios')
+          .select('*')
+          .order('criado_em', { ascending: false });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (!remotos || remotos.length === 0) {
+          alert('⚠️ Nenhum formulário encontrado no Supabase.');
+          return;
+        }
+
+        // Limpa formulários locais
+        await db.formularios.clear();
+        
+        // Salva formulários remotos
+        for (const f of remotos) {
+          await db.formularios.add({
+            uuid: f.id,
+            nome: f.nome,
+            descricao: f.descricao,
+            preCandidato: f.pre_candidato,
+            telefoneContato: f.telefone_contato,
+            campos: f.campos,
+            criadoEm: f.criado_em ? new Date(f.criado_em) : new Date(),
+            sincronizado: true,
+          });
+        }
+
+        alert(`✅ ${remotos.length} formulários baixados com sucesso do Supabase!`);
+        await verificarDados();
+        
+      } catch (error) {
+        alert('❌ Erro ao baixar formulários: ' + error.message);
+      }
+    };
+
+    // Verifica dados ao carregar
+    window.addEventListener('load', verificarDados);
+  </script>
+</body>
+</html>

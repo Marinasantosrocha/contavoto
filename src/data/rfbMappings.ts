@@ -36,7 +36,6 @@ export const RFB_FIELDS: RfbFieldConfig[] = [
   { key: 'melhoria_com_representante', label: 'Melhoria com Representante?' , type: 'binary', order: ['Sim', 'Não']},
   { key: 'prioridade_deputado', label: 'Prioridade do Deputado', type: 'multi' },
   { key: 'autorizacao_contato', label: 'Autorizou Contato?', type: 'binary', order: ['Sim', 'Não'] },
-  { key: 'whatsapp', label: 'WhatsApp', type: 'binary', order: ['Sim', 'Não'] },
 ];
 
 export function getFieldLabel(key: string) {
