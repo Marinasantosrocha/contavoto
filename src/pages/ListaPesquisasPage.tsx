@@ -97,6 +97,48 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     setPlayingId(id);
   };
 
+  const handleDownloadAudio = async (e: React.MouseEvent, url?: string | null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!url) return;
+
+    const nameFromUrl = (() => {
+      try {
+        const u = new URL(url);
+        const path = u.pathname.split('/')
+          .filter(Boolean)
+          .pop();
+        return (path && decodeURIComponent(path)) || 'audio.mp3';
+      } catch {
+        const parts = url.split('?')[0].split('/');
+        return parts[parts.length - 1] || 'audio.mp3';
+      }
+    })();
+
+    try {
+      const resp = await fetch(url, { credentials: 'omit' });
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = nameFromUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      // Fallback para tentar download direto pela URL
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nameFromUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   // Swipe handler para mobile
   const minSwipeToReveal = 80; // pixels para revelar o botão
   const maxSwipe = 100;
@@ -310,25 +352,49 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                         <div style={{ fontWeight: 600 }}>{form?.nome || p.formulario_nome}</div>
                       </div>
                       <div style={{ color: '#6b7280', fontSize: 14, marginBottom: 4 }}>{p.endereco}, {p.bairro} - {p.cidade}</div>
-                      <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 12, color: '#6b7280' }}>{new Date(p.iniciada_em).toLocaleString('pt-BR')}</span>
                         {p.audio_url && (
-                          <button
-                            className="play-icon-button"
-                            onClick={(e) => { e.stopPropagation(); togglePlayCard(p.id, p.audio_url); }}
-                            aria-label={playingId === p.id ? 'Pausar áudio' : 'Reproduzir áudio'}
-                          >
-                            {playingId === p.id ? (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
-                                <rect x="6" y="5" width="4" height="14"/>
-                                <rect x="14" y="5" width="4" height="14"/>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <button
+                              className="play-icon-button"
+                              onClick={(e) => { e.stopPropagation(); togglePlayCard(p.id, p.audio_url); }}
+                              aria-label={playingId === p.id ? 'Pausar áudio' : 'Reproduzir áudio'}
+                            >
+                              {playingId === p.id ? (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
+                                  <rect x="6" y="5" width="4" height="14"/>
+                                  <rect x="14" y="5" width="4" height="14"/>
+                                </svg>
+                              ) : (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => handleDownloadAudio(e, p.audio_url)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 36,
+                                height: 36,
+                                borderRadius: 8,
+                                backgroundColor: '#e5f2ff',
+                                color: '#1a9bff',
+                                border: 'none',
+                                cursor: 'pointer'
+                              }}
+                              aria-label="Baixar áudio"
+                              title="Baixar áudio"
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V4a1 1 0 011-1z"/>
+                                <path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-1a1 1 0 10-2 0v1H7v-1a1 1 0 10-2 0v1z"/>
                               </svg>
-                            ) : (
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            )}
-                          </button>
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

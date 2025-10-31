@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
-import { useEstatisticasPesquisas, usePesquisas, usePesquisadores } from '../hooks/usePesquisas';
-import { useFormularios } from '../hooks/useFormularios';
+import { usePesquisas, usePesquisadores } from '../hooks/usePesquisas';
+import { useAceiteStats } from '../hooks/useAceiteStats';
+import { useAceitePorEntrevistador } from '../hooks/useAceitePorEntrevistador';
+// import { useFormularios } from '../hooks/useFormularios';
 import { useRfbAnalytics } from '../hooks/useRfbAnalytics';
 import { useProdutividade } from '../hooks/useProdutividade';
 import { RFB_FIELDS, getFieldLabel, orderEntries } from '../data/rfbMappings';
@@ -25,7 +27,7 @@ export const DashboardPage = ({
 }: DashboardPageProps) => {
   const [periodoSelecionado, setPeriodoSelecionado] = useState<Periodo>('hoje');
   const [pesquisadorSelecionado, setPesquisadorSelecionado] = useState<number | null>(null);
-  const [formularioSelecionado, setFormularioSelecionado] = useState<string | null>(null);
+  const [formularioSelecionado, _setFormularioSelecionado] = useState<string | null>(null);
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
   const [bairroSelecionado, setBairroSelecionado] = useState<string | null>(null);
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<Record<string, string | null>>({});
@@ -38,11 +40,11 @@ export const DashboardPage = ({
 
   // Buscar dados - aplicar filtro de usuário para pesquisadores
   const filtroUsuario = isPesquisador ? usuarioId : pesquisadorSelecionado;
-  const { data: estatisticas } = useEstatisticasPesquisas(filtroUsuario || undefined);
   const { data: pesquisas = [] } = usePesquisas();
   const { data: pesquisadores = [] } = usePesquisadores();
-  const { data: formularios = [] } = useFormularios();
   const { data: produtividade = [] } = useProdutividade();
+  const { data: aceiteStats } = useAceiteStats();
+  const { data: aceitePorEntrevistador = {} } = useAceitePorEntrevistador();
 
   // Filtrar pesquisas por pesquisador (se for pesquisador logado, apenas suas pesquisas)
   const pesquisasPorPesquisador = pesquisas.filter(p => {
@@ -81,12 +83,15 @@ export const DashboardPage = ({
     return true;
   });
 
-  // Calcular estatísticas do período
-  const aceitaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === true).length;
-  const recusaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === false).length;
-  
-  // Taxa de aceite
-  const totalAbordagens = aceitaramPeriodo + recusaramPeriodo;
+  // Aceitas/Ausentes por entrevistador, a partir do Supabase, sem filtros adicionais
+  const getContagemEntrevistador = (nome: string) => {
+    return aceitePorEntrevistador[nome] || { aceitas: 0, ausentes: 0, total: 0 };
+  };
+
+  // Estatística de aceite (global, somente coluna aceite_participacao)
+  const aceitaramPeriodo = aceiteStats?.aceitaram ?? 0;
+  const recusaramPeriodo = aceiteStats?.recusaram ?? 0;
+  const totalAbordagens = aceiteStats?.total ?? 0;
   const taxaAceite = totalAbordagens > 0 ? (aceitaramPeriodo / totalAbordagens) * 100 : 0;
   const taxaRecusa = totalAbordagens > 0 ? (recusaramPeriodo / totalAbordagens) * 100 : 0;
 
@@ -109,13 +114,7 @@ export const DashboardPage = ({
   const bairrosOrdenados = Object.entries(pesquisasPorBairro)
     .sort(([, a], [, b]) => b - a);
 
-  // Opções de filtros adicionais
-  const opcoesFormularios = useMemo(() => ([
-    { value: '', label: 'Todos os Formulários' },
-    ...formularios
-      .filter((f: any) => !!f?.uuid)
-      .map((f: any) => ({ value: f.uuid as string, label: f.nome as string }))
-  ]), [formularios]);
+  // Opções de filtros adicionais (removido: formulário não utilizado nesta tela)
 
   const opcoesCidades = useMemo(() => {
     const set = new Set<string>();
@@ -142,14 +141,6 @@ export const DashboardPage = ({
     bairro: bairroSelecionado,
     categorySelections: opcoesSelecionadas,
   });
-
-
-  const scaleColors: Record<string, string> = {
-    'Piorou': '#FF7B7B',
-    'Está Igual': '#64748B',
-    'Melhorou': '#1a9bff',
-    'Não sei': '#CBD5E1',
-  };
 
   // beautify não é mais usado; labels amigáveis vêm de rfbMappings
 
@@ -244,9 +235,16 @@ export const DashboardPage = ({
 
         {/* Taxa de Aceite */}
         <div className="page-section">
-          <ChartCard title="Taxa de Aceite" subtitle={`Base: ${totalAbordagens} abordagens no período`}>
+          <ChartCard title="Taxa de Aceite" subtitle={`Base: ${totalAbordagens} abordagens`}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 360px) 1fr', gap: '1.25rem', alignItems: 'center' }}>
-              <DonutChart data={[{ name: 'Aceitaram', value: aceitaramPeriodo }, { name: 'Recusaram', value: recusaramPeriodo }]} />
+              <DonutChart 
+                data={[
+                  { name: 'Aceitaram', value: aceitaramPeriodo }, 
+                  { name: 'Recusaram', value: recusaramPeriodo }
+                ]}
+                // Azul primário para Aceitaram, Vermelho para Recusaram (alinhado com barras)
+                colors={["#1a9bff", "#FF7B7B"]}
+              />
               <div className="taxa-container">
                 <div className="taxa-chart">
                   <div className="taxa-bar-container">
@@ -427,7 +425,10 @@ export const DashboardPage = ({
                       color: '#1f2937',
                       marginBottom: '0.75rem'
                     }}>
-                      {item.entrevistador} ({item.total_entrevistas} entrevistas)
+                      {(() => {
+                        const cont = getContagemEntrevistador(item.entrevistador);
+                        return `${item.entrevistador} (${item.total_entrevistas} entrevistas · ${cont.aceitas} aceitas · ${cont.ausentes} ausentes)`;
+                      })()}
                     </h4>
                     
                     {/* Duração Média */}
