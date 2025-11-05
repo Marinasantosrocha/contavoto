@@ -164,8 +164,14 @@ function montarPrompt(
   campos: CampoFormulario[],
   candidato?: string
 ): string {
-  // Lista os campos esperados
-  const listaCampos = campos.map(campo => {
+  // Filtra campos pessoais (serão digitados manualmente, não transcritos)
+  const camposParaTranscricao = campos.filter(campo => {
+    const campoComGrupo = campo as CampoFormulario & { grupo?: string };
+    return campoComGrupo.grupo !== 'pessoais';
+  });
+  
+  // Lista os campos esperados (apenas os que não são pessoais)
+  const listaCampos = camposParaTranscricao.map(campo => {
     let descricao = `- ${campo.id} (${campo.tipo})`;
     
     if (campo.label) {
@@ -260,8 +266,14 @@ function validarResultado(dados: any, campos: CampoFormulario[]): ResultadoIA {
   const respostas: { [campoId: string]: any } = {};
   const confianca: { [campoId: string]: number } = {};
 
-  // Valida cada campo
-  for (const campo of campos) {
+  // Filtra campos pessoais (não devem ser preenchidos pela IA)
+  const camposParaValidar = campos.filter(campo => {
+    const campoComGrupo = campo as CampoFormulario & { grupo?: string };
+    return campoComGrupo.grupo !== 'pessoais';
+  });
+
+  // Valida cada campo (apenas os que não são pessoais)
+  for (const campo of camposParaValidar) {
     const valor = dados.respostas?.[campo.id];
     const conf = dados.confianca?.[campo.id] || 0;
 

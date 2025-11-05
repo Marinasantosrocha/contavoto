@@ -12,12 +12,14 @@ export const formularioPortaAPortaModelo: Omit<Formulario, 'id' | 'criadoEm' | '
       tipo: 'texto',
       label: '1. Qual é o seu nome?',
       obrigatorio: true,
+      grupo: 'pessoais',
     },
     {
       id: 'telefone_morador',
       tipo: 'telefone',
       label: '2. Telefone (opcional)',
       obrigatorio: false,
+      grupo: 'pessoais',
     },
     {
       id: 'problema_bairro',
@@ -380,6 +382,7 @@ export const formularioPortaAPortaCompleto: Omit<Formulario, 'id' | 'criadoEm' |
     },
   ],
 };
+
 
 
 

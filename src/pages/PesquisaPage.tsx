@@ -34,6 +34,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [nomeCandidato, setNomeCandidato] = useState<string>('');
   const [nomeEntrevistador, setNomeEntrevistador] = useState<string>('');
   const [generoEntrevistado, setGeneroEntrevistado] = useState<'masculino' | 'feminino' | null>(null);
+  const [etapa, setEtapa] = useState<'principais' | 'video' | 'pessoais'>('principais');
   
   // Estados para gravação contínua
   const [isRecording, setIsRecording] = useState(false);
@@ -46,6 +47,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const [aceitouVerVideo, setAceitouVerVideo] = useState<boolean | null>(null);
   const [mostrarVideoAgradecimento, setMostrarVideoAgradecimento] = useState(false);
   const [mostrarTelaVideo, setMostrarTelaVideo] = useState(false);
+  const [naoTemTelefone, setNaoTemTelefone] = useState(false);
 
   // Função para adaptar texto das perguntas baseado no gênero
   const adaptarTextoPorGenero = (texto: string, genero: 'masculino' | 'feminino' | null): string => {
@@ -113,6 +115,17 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     if (pesquisa?.respostas) {
       setRespostas(pesquisa.respostas);
     }
+    
+    // Sincroniza aceite_participacao (string) com estado local (boolean)
+    if (pesquisa?.aceite_participacao !== undefined) {
+      if (pesquisa.aceite_participacao === 'true') {
+        setAceitouParticipar(true);
+      } else if (pesquisa.aceite_participacao === 'false' || pesquisa.aceite_participacao === 'ausente') {
+        setAceitouParticipar(false);
+      } else {
+        setAceitouParticipar(null);
+      }
+    }
   }, [pesquisa]);
 
   // Atualiza cronômetro da gravação
@@ -148,8 +161,25 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     return deveMostrar;
   });
 
-  const perguntaAtual = todasPerguntas[perguntaAtualIndex];
-  const totalPerguntas = todasPerguntas.length;
+  // Separar por grupo (padrão: principais quando grupo não está definido)
+  const perguntasPessoais = todasPerguntas.filter((p: any) => (p as any).grupo === 'pessoais');
+  const perguntasPrincipais = todasPerguntas.filter((p: any) => (p as any).grupo !== 'pessoais');
+
+  // Filtrar whatsapp se não autorizou contato
+  const autorizacao = respostas['autorizacao_contato'];
+  const perguntasPessoaisFiltradas = etapa === 'pessoais' 
+    ? perguntasPessoais.filter((p: any) => {
+        // Se não autorizou, não mostra whatsapp
+        if (p.id === 'whatsapp' && autorizacao !== 'Sim, autorizo') {
+          return false;
+        }
+        return true;
+      })
+    : perguntasPessoais;
+
+  const listaEtapa = etapa === 'principais' ? perguntasPrincipais : perguntasPessoaisFiltradas;
+  const perguntaAtual = listaEtapa[perguntaAtualIndex];
+  const totalPerguntas = listaEtapa.length;
   const progresso = totalPerguntas > 0 ? ((perguntaAtualIndex + 1) / totalPerguntas) * 100 : 0;
 
   // Removido handleResposta não utilizado (evita erro de noUnusedLocals)
@@ -159,11 +189,11 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
     setGeneroEntrevistado(genero);
     setPerguntaAtualIndex(0);
     
-    // Salvar aceite no banco (sem o gênero, apenas true)
+    // Salvar aceite no banco como "true" (texto)
     salvarResposta.mutate({
       pesquisaId,
       campoId: 'aceite_participacao',
-      valor: true,
+      valor: 'true',
     });
 
     // 🎙️ INICIAR GRAVAÇÃO CONTÍNUA AUTOMATICAMENTE
@@ -186,18 +216,27 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
   const handleRecusarParticipacao = async (motivo: string) => {
     setAceitouParticipar(false);
     
-    // Salvar recusa e motivo no banco
-    salvarResposta.mutate({
-      pesquisaId,
-      campoId: 'aceite_participacao',
-      valor: false,
-    });
-    
-    salvarResposta.mutate({
-      pesquisaId,
-      campoId: 'motivo_recusa',
-      valor: motivo,
-    });
+    // Se for "Ausente", salva "ausente", senão salva "false" e o motivo
+    if (motivo === 'Ausente') {
+      salvarResposta.mutate({
+        pesquisaId,
+        campoId: 'aceite_participacao',
+        valor: 'ausente',
+      });
+    } else {
+      // Recusa com motivo
+      salvarResposta.mutate({
+        pesquisaId,
+        campoId: 'aceite_participacao',
+        valor: 'false',
+      });
+      
+      salvarResposta.mutate({
+        pesquisaId,
+        campoId: 'motivo_recusa',
+        valor: motivo,
+      });
+    }
 
     // Finalizar pesquisa como recusada
     await finalizarPesquisa.mutateAsync({
@@ -232,22 +271,41 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
       continuousAudio.addTimeMarker(`Pergunta ${perguntaAtualIndex + 1}: ${perguntaAtual.label}`);
     }
 
-    // Avança para próxima pergunta ou finaliza
+    // Avança para próxima pergunta ou troca de etapa
     if (perguntaAtualIndex < totalPerguntas - 1) {
       setPerguntaAtualIndex(perguntaAtualIndex + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      // Chegou ao fim das perguntas
-      setMostrarEncerramento(true);
+      // Chegou ao fim da etapa
+      if (etapa === 'principais') {
+        setMostrarEncerramento(true);
+        setEtapa('video');
+      } else {
+        // etapa pessoais concluída
+        setMostrarEncerramento(true);
+      }
     }
   };
 
   const handleFinalizar = async () => {
     const nome = respostas['nome_morador'];
     const telefone = respostas['telefone_morador'];
+    const dataNascimento = respostas['faixa_etaria'];
+    const autorizacao = respostas['autorizacao_contato'];
+    const whatsapp = respostas['whatsapp'];
 
     // 🎙️ PARAR GRAVAÇÃO E SALVAR ÁUDIO
     await pararGravacao();
+
+    // Atualizar pesquisa com dados pessoais nas colunas específicas
+    await db.pesquisas.update(pesquisaId, {
+      nomeEntrevistado: nome,
+      telefoneEntrevistado: telefone,
+      data_nascimento: dataNascimento,
+      autorizacao_contato: autorizacao,
+      whatsapp: whatsapp,
+      sincronizado: false // Marca como não sincronizado para enviar os novos dados
+    });
 
     await finalizarPesquisa.mutateAsync({
       pesquisaId,
@@ -298,8 +356,8 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
   // Tela de Encerramento
   if (mostrarEncerramento) {
-    // Tela de vídeo em tela cheia
-    if (mostrarTelaVideo) {
+    // Tela de vídeo em tela cheia (etapa de vídeo)
+    if (etapa === 'video' && mostrarTelaVideo) {
       return (
         <>
           <style>{`
@@ -369,7 +427,13 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                 gap: '0.5rem'
               }}>
                 <button
-                  onClick={handleFinalizar}
+                  onClick={() => {
+                    // Após o vídeo, seguir para dados pessoais
+                    setMostrarTelaVideo(false);
+                    setMostrarEncerramento(false);
+                    setEtapa('pessoais');
+                    setPerguntaAtualIndex(0);
+                  }}
                   className="btn btn-primary"
                   style={{ 
                     width: '100%', 
@@ -380,7 +444,7 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                   }}
                   disabled={finalizarPesquisa.isPending}
                 >
-                  {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
+                  {finalizarPesquisa.isPending ? 'Carregando...' : 'Continuar'}
                 </button>
               </div>
             </div>
@@ -390,60 +454,93 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
       );
     }
 
+    // Se está na fase de vídeo: mostrar convite do vídeo
+    if (etapa === 'video') {
+      return (
+        <div className="app-container">
+          {/* Header oculto no encerramento */}
+
+          <main className="main-content">
+            <div className="page-section">
+              <div className="card">
+                <div className="encerramento-texto">
+                  <p>
+                    Muito obrigado por dedicar um tempinho para responder.
+                  </p>
+                  <p>
+                    O <strong>Prefeito Pedro Braga</strong> gravou um vídeo curtinho para agradecer pessoalmente a cada pessoa que está participando dessa escuta.
+                  </p>
+                  <p>
+                    É um vídeo simples, de agradecimento, em que ele também fala um pouco sobre o que acredita para o <strong>Norte de Minas</strong> e sobre a importância de ouvir quem vive na região.
+                  </p>
+                  <p>
+                    Posso te mostrar agora rapidinho?
+                  </p>
+
+                  {/* Botões lado a lado */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '1fr 1fr', 
+                    gap: '1rem', 
+                    marginTop: '1.5rem' 
+                  }}>
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={async () => { 
+                        await pararGravacao();
+                        setMostrarTelaVideo(true);
+                      }}
+                    >
+                      Mostrar vídeo
+                    </button>
+                    <button
+                      onClick={async () => {
+                        // Pular vídeo e ir para dados pessoais
+                        await pararGravacao();
+                        setMostrarEncerramento(false);
+                        setEtapa('pessoais');
+                        setPerguntaAtualIndex(0);
+                      }}
+                      className="btn btn-primary"
+                      disabled={finalizarPesquisa.isPending}
+                    >
+                      {finalizarPesquisa.isPending ? 'Carregando...' : 'Continuar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          {/* Bottom Navigation oculto no encerramento */}
+        </div>
+      );
+    }
+
+    // Caso contrário: etapa de finalização após pessoais
     return (
       <div className="app-container">
-        {/* Header oculto no encerramento */}
-
         <main className="main-content">
           <div className="page-section">
             <div className="card">
               <div className="encerramento-texto">
-                <p>
-                  Muito obrigado por dedicar um tempinho para responder.
-                </p>
-                <p>
-                  O <strong>Prefeito Pedro Braga</strong> gravou um vídeo curtinho para agradecer pessoalmente a cada pessoa que está participando dessa escuta.
-                </p>
-                <p>
-                  É um vídeo simples, de agradecimento, em que ele também fala um pouco sobre o que acredita para o <strong>Norte de Minas</strong> e sobre a importância de ouvir quem vive na região.
-                </p>
-                <p>
-                  Posso te mostrar agora rapidinho?
-                </p>
-
-                {/* Botões lado a lado */}
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '1fr 1fr', 
-                  gap: '1rem', 
-                  marginTop: '1.5rem' 
-                }}>
-                  <button 
-                    className="btn btn-secondary" 
-                    onClick={async () => { 
-                      await pararGravacao();
-                      setMostrarTelaVideo(true);
-                    }}
-                  >
-                    Mostrar vídeo
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await pararGravacao();
-                      handleFinalizar();
-                    }}
-                    className="btn btn-primary"
-                    disabled={finalizarPesquisa.isPending}
-                  >
-                    {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
-                  </button>
-                </div>
+                <p>Obrigado! Agora podemos finalizar.</p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                  onClick={async () => {
+                    await pararGravacao();
+                    handleFinalizar();
+                  }}
+                  className="btn btn-primary"
+                  disabled={finalizarPesquisa.isPending}
+                >
+                  {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
+                </button>
               </div>
             </div>
           </div>
         </main>
-
-        {/* Bottom Navigation oculto no encerramento */}
       </div>
     );
   }
@@ -591,6 +688,39 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
                 onPerguntei={handlePerguntei}
                 preCandidato={nomeCandidato || formulario.preCandidato}
                 textoAdaptado={adaptarTextoPorGenero(perguntaAtual.label, generoEntrevistado)}
+                valor={respostas[perguntaAtual.id]}
+                onChange={(valor) => {
+                  // Salva resposta imediatamente para campos pessoais
+                  const novasRespostas = { ...respostas, [perguntaAtual.id]: valor };
+                  setRespostas(novasRespostas);
+                  // Salva no banco
+                  salvarResposta.mutate({
+                    pesquisaId,
+                    campoId: perguntaAtual.id,
+                    valor: valor,
+                  });
+                  
+                  // Se mudou autorização para "Não autorizo", limpa whatsapp
+                  if (perguntaAtual.id === 'autorizacao_contato' && valor !== 'Sim, autorizo') {
+                    const respostasSemWhatsapp = { ...novasRespostas };
+                    delete respostasSemWhatsapp['whatsapp'];
+                    setRespostas(respostasSemWhatsapp);
+                  }
+                }}
+                naoTemTelefone={naoTemTelefone}
+                onNaoTemTelefone={(valor) => {
+                  setNaoTemTelefone(valor);
+                  if (valor) {
+                    // Se marcou "Não tem", salva string vazia
+                    const novasRespostas = { ...respostas, whatsapp: '' };
+                    setRespostas(novasRespostas);
+                    salvarResposta.mutate({
+                      pesquisaId,
+                      campoId: 'whatsapp',
+                      valor: '',
+                    });
+                  }
+                }}
               />
             </>
           )}

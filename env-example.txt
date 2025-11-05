@@ -38,3 +38,4 @@ GEMINI_API_KEY=coloque_sua_gemini_api_key
 # (Se você ainda quiser forçar um modelo específico, edite o código do worker.)
 
 
+

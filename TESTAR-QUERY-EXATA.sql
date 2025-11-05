@@ -46,3 +46,4 @@ WHERE telefone = '38998143436'
 -- O AuthService pode precisar ser ajustado para fazer duas queries separadas
 
 
+

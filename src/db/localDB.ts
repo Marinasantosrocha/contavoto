@@ -24,6 +24,8 @@ export interface CampoFormulario {
     campoDependente: string;
     valorRequerido: string;
   };
+  grupo?: string; // Para separar campos pessoais (ex: 'pessoais')
+  observacao?: string; // Observações sobre o campo (ex: instruções de preenchimento)
 }
 
 // Interface para Pesquisa Realizada
@@ -44,10 +46,13 @@ export interface Pesquisa {
   // Dados do entrevistado
   nomeEntrevistado?: string;
   telefoneEntrevistado?: string;
+  data_nascimento?: string; // DD/MM ou DD/MM/AAAA
+  autorizacao_contato?: string; // "Sim, autorizo" ou "Não autorizo"
+  whatsapp?: string; // Apenas números (DDD + número)
   
   // Aceite de participação
-  aceite_participacao?: boolean; // true = aceitou, false = recusou, undefined = não perguntado
-  motivo_recusa?: string; // Preenchido quando aceite_participacao = false
+  aceite_participacao?: string; // "true" = aceitou, "false" = recusou, "ausente" = não estava em casa, undefined = não perguntado
+  motivo_recusa?: string; // Preenchido quando aceite_participacao = "false" (não preenchido para "ausente")
   
   // Respostas
   respostas: { [key: string]: any };

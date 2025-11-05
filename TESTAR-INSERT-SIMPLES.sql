@@ -121,3 +121,4 @@ LEFT JOIN tipos_usuarios t ON u.tipo_usuario_id = t.id
 ORDER BY t.nivel_permissao DESC, u.nome;
 
 
+

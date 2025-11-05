@@ -78,3 +78,4 @@ VITE_SUPABASE_ANON_KEY=sua_chave_aqui
 **Pronto! Seu sistema ContaVoto estará funcionando com autenticação completa!** 🎉
 
 
+
