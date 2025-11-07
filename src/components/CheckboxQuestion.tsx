@@ -36,21 +36,67 @@ export default function CheckboxQuestion({
   const campoComGrupo = campo as CampoFormulario & { grupo?: string };
   const isCampoPessoal = campoComGrupo.grupo === 'pessoais';
   const isCampoTelefone = campo.tipo === 'telefone';
+  const isCampoDataNascimento = campo.tipo === 'texto' && campo.id === 'faixa_etaria';
+  const ocultarOpcoes = campo.id === 'tempo_moradia';
+  const [diaNascimento, setDiaNascimento] = useState('');
+  const [mesNascimento, setMesNascimento] = useState('');
+  const [anoNascimento, setAnoNascimento] = useState('');
   
   // Sempre que a pergunta mudar, resetar o estado do checkbox
   // Garante que a próxima pergunta não venha marcada
   useEffect(() => {
     setPerguntei(false);
   }, [campo.id, numeroPergunta]);
+
+  useEffect(() => {
+    if (isCampoDataNascimento) {
+      const partes = typeof valor === 'string'
+        ? valor.split(/[^0-9]/).filter(Boolean)
+        : [];
+      setDiaNascimento(partes[0] || '');
+      setMesNascimento(partes[1] || '');
+      setAnoNascimento(partes[2] || '');
+    } else {
+      setDiaNascimento('');
+      setMesNascimento('');
+      setAnoNascimento('');
+    }
+  }, [isCampoDataNascimento, valor]);
+
+  const atualizarDataNascimento = (dia: string, mes: string, ano: string) => {
+    const partesOrdenadas = [dia, mes, ano];
+    const preenchidas = partesOrdenadas.filter((parte) => parte && parte.trim() !== '');
+    const texto = preenchidas.length > 0 ? preenchidas.join('/') : '';
+    onChange?.(texto);
+  };
+
+  const handleDiaChange = (novoValor: string) => {
+    const apenasNumeros = novoValor.replace(/\D/g, '').slice(0, 2);
+    setDiaNascimento(apenasNumeros);
+    atualizarDataNascimento(apenasNumeros, mesNascimento, anoNascimento);
+  };
+
+  const handleMesChange = (novoValor: string) => {
+    const apenasNumeros = novoValor.replace(/\D/g, '').slice(0, 2);
+    setMesNascimento(apenasNumeros);
+    atualizarDataNascimento(diaNascimento, apenasNumeros, anoNascimento);
+  };
+
+  const handleAnoChange = (novoValor: string) => {
+    const apenasNumeros = novoValor.replace(/\D/g, '').slice(0, 4);
+    setAnoNascimento(apenasNumeros);
+    atualizarDataNascimento(diaNascimento, mesNascimento, apenasNumeros);
+  };
   
   // Para campos pessoais, o botão habilita quando checkbox está marcado E há valor (se necessário)
   // Para telefone, habilita se "Não tem" marcado OU número digitado
   // Para campos não pessoais, só precisa do checkbox
+  const campoPessoalOpcionalSemValor = isCampoPessoal && campo.id === 'faixa_etaria';
   const podeAvancar = isCampoPessoal 
     ? perguntei && (
         campo.opcoes ? valor : 
         isCampoTelefone ? (naoTemTelefone || (valor && String(valor).trim() !== '')) :
-        (valor && String(valor).trim() !== '')
+        (campoPessoalOpcionalSemValor ? true : (valor && String(valor).trim() !== ''))
       )
     : perguntei;
 
@@ -122,82 +168,177 @@ export default function CheckboxQuestion({
             
             {/* Campo de data de nascimento (formatado DD/MM ou DD/MM/AAAA) - aceita apenas números */}
             {campo.tipo === 'texto' && campo.id === 'faixa_etaria' && (
-              <input
-                type="text"
-                inputMode="numeric"
-                value={valor || ''}
-                onKeyDown={(e) => {
-                  // Bloqueia qualquer tecla que não seja número ou teclas de controle
-                  const tecla = e.key;
-                  const teclasPermitidas = [
-                    'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-                    'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'
-                  ];
-                  
-                  // Permite teclas de controle (backspace, delete, setas, etc)
-                  if (teclasPermitidas.includes(tecla) || e.ctrlKey || e.metaKey) {
-                    return;
-                  }
-                  
-                  // Permite apenas números (0-9)
-                  if (!/^[0-9]$/.test(tecla)) {
-                    e.preventDefault();
-                    return false;
-                  }
-                }}
-                onChange={(e) => {
-                  // Remove tudo que não é número (proteção adicional)
-                  const numeros = e.target.value.replace(/\D/g, '');
-                  
-                  // Formata como DD/MM ou DD/MM/AAAA
-                  let formatado = '';
-                  if (numeros.length <= 2) {
-                    formatado = numeros;
-                  } else if (numeros.length <= 4) {
-                    formatado = `${numeros.slice(0, 2)}/${numeros.slice(2)}`;
-                  } else {
-                    formatado = `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}/${numeros.slice(4, 8)}`;
-                  }
-                  
-                  onChange?.(formatado);
-                }}
-                onPaste={(e) => {
-                  // Bloqueia colar e remove caracteres não numéricos
-                  e.preventDefault();
-                  const texto = e.clipboardData.getData('text');
-                  const numeros = texto.replace(/\D/g, '');
-                  
-                  if (numeros.length > 0) {
-                    // Formata os números colados
-                    let formatado = '';
-                    const numerosLimitados = numeros.slice(0, 8);
-                    if (numerosLimitados.length <= 2) {
-                      formatado = numerosLimitados;
-                    } else if (numerosLimitados.length <= 4) {
-                      formatado = `${numerosLimitados.slice(0, 2)}/${numerosLimitados.slice(2)}`;
-                    } else {
-                      formatado = `${numerosLimitados.slice(0, 2)}/${numerosLimitados.slice(2, 4)}/${numerosLimitados.slice(4, 8)}`;
-                    }
-                    onChange?.(formatado);
-                  }
-                }}
-                placeholder="Digite a data de nascimento"
-                maxLength={10}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  fontSize: '1rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '0.5rem',
-                  boxSizing: 'border-box'
-                }}
-              />
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                gap: '0.75rem'
+              }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={diaNascimento}
+                  onChange={(e) => handleDiaChange(e.target.value)}
+                  placeholder="Dia"
+                  maxLength={2}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '1rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '0.5rem',
+                    boxSizing: 'border-box',
+                    textAlign: 'center'
+                  }}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={mesNascimento}
+                  onChange={(e) => handleMesChange(e.target.value)}
+                  placeholder="Mês"
+                  maxLength={2}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '1rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '0.5rem',
+                    boxSizing: 'border-box',
+                    textAlign: 'center'
+                  }}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={anoNascimento}
+                  onChange={(e) => handleAnoChange(e.target.value)}
+                  placeholder="Ano"
+                  maxLength={4}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '1rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '0.5rem',
+                    boxSizing: 'border-box',
+                    textAlign: 'center'
+                  }}
+                />
+              </div>
             )}
             
-            {/* Campo de telefone (formatado, mas salva sem formatação) */}
+            {/* Campo de telefone (formatado como (38) 9 9999-9999, mas salva sem formatação) */}
             {campo.tipo === 'telefone' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {/* Botão "Não tem" */}
+              <div style={{ display: 'flex', flexDirection: 'row', gap: '0.75rem', alignItems: 'stretch' }}>
+                {/* Input de telefone (80% da largura) */}
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={(() => {
+                    // Exibe formato (38) 9 9999-9999 durante digitação
+                    if (naoTemTelefone) return '';
+                    if (!valor) return '(38) '; // Pré-preenche com DDD 38
+                    
+                    const numeros = String(valor).replace(/\D/g, '');
+                    
+                    // Se não tem DDD ainda, adiciona 38
+                    if (numeros.length === 0) return '(38) ';
+                    
+                    // Garante que tem pelo menos 2 dígitos (DDD)
+                    let ddd = numeros.slice(0, 2);
+                    if (ddd.length < 2) {
+                      // Se tem menos de 2 dígitos, completa com 38
+                      ddd = ddd.length === 0 ? '38' : ddd + '38'.slice(ddd.length);
+                    }
+                    
+                    const numero = numeros.slice(2);
+                    
+                    // Formata: (XX) X XXXX-XXXX
+                    if (numero.length === 0) {
+                      return `(${ddd}) `;
+                    } else if (numero.length <= 1) {
+                      return `(${ddd}) ${numero}`;
+                    } else if (numero.length <= 5) {
+                      return `(${ddd}) ${numero.slice(0, 1)} ${numero.slice(1)}`;
+                    } else {
+                      return `(${ddd}) ${numero.slice(0, 1)} ${numero.slice(1, 5)}-${numero.slice(5, 9)}`;
+                    }
+                  })()}
+                  onChange={(e) => {
+                    // Remove tudo que não é número
+                    let numeros = e.target.value.replace(/\D/g, '');
+                    
+                    // Se está vazio ou só tem menos de 2 dígitos, pré-preenche com 38
+                    if (numeros.length === 0) {
+                      numeros = '38';
+                    } else if (numeros.length < 2) {
+                      // Se tem 1 dígito, completa com 38
+                      numeros = '38' + numeros;
+                    }
+                    
+                    // Limita a 11 dígitos (2 DDD + 9 número)
+                    const numerosLimitados = numeros.slice(0, 11);
+                    
+                    // Salva apenas números (sem formatação)
+                    onChange?.(numerosLimitados);
+                    
+                    // Se digitou algo, desmarca "Não tem"
+                    if (numerosLimitados.length > 0 && naoTemTelefone) {
+                      onNaoTemTelefone?.(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Bloqueia qualquer tecla que não seja número ou teclas de controle
+                    const tecla = e.key;
+                    const teclasPermitidas = [
+                      'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                      'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'
+                    ];
+                    
+                    // Permite teclas de controle
+                    if (teclasPermitidas.includes(tecla) || e.ctrlKey || e.metaKey) {
+                      return;
+                    }
+                    
+                    // Permite apenas números (0-9)
+                    if (!/^[0-9]$/.test(tecla)) {
+                      e.preventDefault();
+                      return false;
+                    }
+                  }}
+                  onPaste={(e) => {
+                    // Bloqueia colar e remove caracteres não numéricos
+                    e.preventDefault();
+                    const texto = e.clipboardData.getData('text');
+                    let numeros = texto.replace(/\D/g, '');
+                    
+                    // Se está vazio, pré-preenche com 38
+                    if (numeros.length === 0) {
+                      numeros = '38';
+                    } else if (numeros.length < 2) {
+                      numeros = '38' + numeros;
+                    }
+                    
+                    const numerosLimitados = numeros.slice(0, 11);
+                    onChange?.(numerosLimitados);
+                  }}
+                  placeholder="(38) 9 9999-9999"
+                  maxLength={16} // (XX) X XXXX-XXXX = 16 caracteres formatados
+                  disabled={naoTemTelefone}
+                  style={{
+                    flex: '0 0 80%',
+                    width: '80%',
+                    padding: '0.75rem',
+                    fontSize: '1rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '0.5rem',
+                    boxSizing: 'border-box',
+                    opacity: naoTemTelefone ? 0.5 : 1,
+                    backgroundColor: naoTemTelefone ? '#f3f4f6' : '#ffffff'
+                  }}
+                />
+                
+                {/* Botão "Não tem" (20% da largura) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -208,9 +349,10 @@ export default function CheckboxQuestion({
                     }
                   }}
                   style={{
-                    width: '100%',
-                    padding: '0.75rem 1rem',
-                    fontSize: '0.95rem',
+                    flex: '0 0 20%',
+                    width: '20%',
+                    padding: '0.75rem 0.5rem',
+                    fontSize: '0.9rem',
                     fontWeight: '500',
                     backgroundColor: naoTemTelefone ? '#b3d9ff' : '#f3f4f6',
                     color: naoTemTelefone ? '#1a9bff' : '#6b7280',
@@ -218,56 +360,17 @@ export default function CheckboxQuestion({
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    whiteSpace: 'nowrap'
                   }}
                 >
                   Não tem
                 </button>
-                
-                {/* Input de telefone */}
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  value={(() => {
-                    // Exibe formato 9 9918 4050 durante digitação
-                    if (!valor || naoTemTelefone) return '';
-                    const numeros = String(valor).replace(/\D/g, '');
-                    if (numeros.length <= 1) return numeros;
-                    if (numeros.length <= 5) return `${numeros.slice(0, 1)} ${numeros.slice(1)}`;
-                    return `${numeros.slice(0, 1)} ${numeros.slice(1, 5)} ${numeros.slice(5, 11)}`;
-                  })()}
-                  onChange={(e) => {
-                    // Remove tudo que não é número
-                    const numeros = e.target.value.replace(/\D/g, '');
-                    
-                    // Salva apenas números (sem formatação) - máximo 11 dígitos
-                    const numerosLimitados = numeros.slice(0, 11);
-                    onChange?.(numerosLimitados);
-                    
-                    // Se digitou algo, desmarca "Não tem"
-                    if (numerosLimitados.length > 0 && naoTemTelefone) {
-                      onNaoTemTelefone?.(false);
-                    }
-                  }}
-                  placeholder="Digite o número (ex: 9 9918 4050)"
-                  maxLength={13} // 1 + espaço + 4 + espaço + 6 = 13 caracteres formatados
-                  disabled={naoTemTelefone}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    fontSize: '1rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '0.5rem',
-                    boxSizing: 'border-box',
-                    opacity: naoTemTelefone ? 0.5 : 1,
-                    backgroundColor: naoTemTelefone ? '#f3f4f6' : '#ffffff'
-                  }}
-                />
               </div>
             )}
             
             {/* Campo de opções (autorizacao_contato) - botões estilizados lado a lado */}
-            {campo.opcoes && campo.opcoes.length > 0 && (
+            {campo.opcoes && campo.opcoes.length > 0 && !ocultarOpcoes && (
               <div style={{ 
                 marginTop: '1.5rem', 
                 display: 'grid', 
@@ -312,7 +415,7 @@ export default function CheckboxQuestion({
         )}
 
         {/* Mostrar opções se houver (radio, checkbox, select) - apenas para campos não pessoais */}
-        {!isCampoPessoal && campo.opcoes && campo.opcoes.length > 0 && (
+        {!isCampoPessoal && campo.opcoes && campo.opcoes.length > 0 && !ocultarOpcoes && (
           <div className="question-options">
             <ul className="options-list" style={{ 
               display: 'grid', 

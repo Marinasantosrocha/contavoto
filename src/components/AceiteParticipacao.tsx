@@ -12,7 +12,7 @@ const MOTIVOS_RECUSA = [
   'Ausente',
   'Sem tempo',
   'Não gosta de pesquisas',
-  'Não conhece o candidato',
+  'Pediu para voltar outro dia',
   'Não quer se identificar',
   'Outro motivo'
 ];

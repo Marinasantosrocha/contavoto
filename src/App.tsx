@@ -127,10 +127,18 @@ function AppContent() {
               </button>
               <button 
                 onClick={dismissInstallPrompt} 
-                className="btn btn-secondary btn-small"
-                style={{ color: '#242c30' }}
+                className="btn btn-small"
+                style={{ 
+                  color: '#242c30', 
+                  background: 'transparent', 
+                  border: 'none', 
+                  boxShadow: 'none',
+                  fontSize: '1.8rem',
+                  lineHeight: 1,
+                  padding: '0 0.75rem'
+                }}
               >
-                ✖️
+                ×
               </button>
             </div>
           </div>

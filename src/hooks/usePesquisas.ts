@@ -21,6 +21,15 @@ export const useEstatisticasPesquisas = (usuario_id?: number) => {
   });
 };
 
+// Hook para buscar estatísticas do dia atual (offline)
+export const useEstatisticasDia = (usuario_id?: number) => {
+  return useQuery({
+    queryKey: [...pesquisaKeys.stats(), 'dia', usuario_id],
+    queryFn: () => PesquisaService.contarEstatisticasDia(usuario_id),
+    refetchInterval: 5000, // Atualiza a cada 5 segundos
+  });
+};
+
 // Hook para buscar lista de pesquisas
 export const usePesquisas = (filtro?: { status?: 'em_andamento' | 'finalizada' | 'cancelada'; formularioId?: number }) => {
   return useQuery({
@@ -116,7 +125,7 @@ export const useFinalizarPesquisa = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pesquisaKeys.detail(variables.pesquisaId) });
       queryClient.invalidateQueries({ queryKey: pesquisaKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: pesquisaKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: pesquisaKeys.stats() }); // Invalida também estatísticas do dia
     },
   });
 };

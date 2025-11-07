@@ -281,8 +281,8 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
         setMostrarEncerramento(true);
         setEtapa('video');
       } else {
-        // etapa pessoais concluída
-        setMostrarEncerramento(true);
+        // etapa pessoais concluída - finalizar direto
+        handleFinalizar();
       }
     }
   };
@@ -517,32 +517,8 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
       );
     }
 
-    // Caso contrário: etapa de finalização após pessoais
-    return (
-      <div className="app-container">
-        <main className="main-content">
-          <div className="page-section">
-            <div className="card">
-              <div className="encerramento-texto">
-                <p>Obrigado! Agora podemos finalizar.</p>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button
-                  onClick={async () => {
-                    await pararGravacao();
-                    handleFinalizar();
-                  }}
-                  className="btn btn-primary"
-                  disabled={finalizarPesquisa.isPending}
-                >
-                  {finalizarPesquisa.isPending ? 'Finalizando...' : 'Finalizar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
+    // Não deve chegar aqui - etapa pessoais finaliza direto
+    return null;
   }
 
   // Tela de Pesquisa
@@ -612,12 +588,10 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
           {aceitouParticipar === false && (
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">Moradores ausentes</h3>
+                <h3 className="card-title">Recusa registrada</h3>
               </div>
               <p style={{ textAlign: 'center', marginBottom: '20px', fontSize: '1.1rem', lineHeight: '1.6' }}>
-                Parece que não tem ninguém em casa agora.
-                <br />
-                Tudo bem! Vamos para a próxima.
+                “Recusa anotada! Bora para o próximo, você está indo bem!”
               </p>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <button
