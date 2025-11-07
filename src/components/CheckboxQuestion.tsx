@@ -374,7 +374,7 @@ export default function CheckboxQuestion({
               <div style={{ 
                 marginTop: '1.5rem', 
                 display: 'grid', 
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: campo.opcoes.length === 3 ? 'repeat(3, 1fr)' : '1fr 1fr',
                 gap: '0.75rem' 
               }}>
                 {campo.opcoes.map((opcao, index) => (
@@ -419,7 +419,7 @@ export default function CheckboxQuestion({
           <div className="question-options">
             <ul className="options-list" style={{ 
               display: 'grid', 
-              gridTemplateColumns: campo.opcoes.length === 2 ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', 
+              gridTemplateColumns: campo.opcoes.length === 2 ? 'repeat(2, 1fr)' : campo.opcoes.length === 3 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)', 
               gap: '0.75rem',
               listStyle: 'none',
               padding: 0
