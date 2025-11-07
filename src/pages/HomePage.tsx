@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useFormularios } from '../hooks/useFormularios';
-import { useEstatisticasPesquisas, useCriarPesquisa } from '../hooks/usePesquisas';
+import { useEstatisticasPesquisas, useEstatisticasDia, useCriarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
 
 // Cidades disponíveis para seleção
 const CIDADES_DISPONIVEIS = [
-  'Lagoa dos Patos'
+  'Ibiaí'
 ];
 
 interface HomePageProps {
@@ -55,22 +55,38 @@ export const HomePage = ({
   // React Query hooks - filtrar por usuário se for pesquisador
   const { data: formularios = [] } = useFormularios();
   const { data: estatisticas } = useEstatisticasPesquisas(isPesquisador ? usuarioId : undefined);
+  const { data: estatisticasDia } = useEstatisticasDia(isPesquisador ? usuarioId : undefined);
   const criarPesquisa = useCriarPesquisa();
   
   // Estados locais
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [endereco, setEndereco] = useState('');
   const [numero, setNumero] = useState('');
+  const [numeroProximo, setNumeroProximo] = useState('');
   const [semNumero, setSemNumero] = useState(false);
-  const [bairro, setBairro] = useState('');
-  const [cidade, setCidade] = useState('');
+  const [cidade, setCidade] = useState('Ibiaí');
+
+  useEffect(() => {
+    setCidade('Ibiaí');
+    const migrarCidadeCache = () => {
+      const ultimoEndereco = carregarUltimoEndereco();
+      if (ultimoEndereco && ultimoEndereco.cidade === 'Lagoa dos Patos') {
+        salvarUltimoEndereco({
+          endereco: ultimoEndereco.endereco,
+          cidade: 'Ibiaí'
+        });
+        setCidade('Ibiaí');
+      }
+    };
+    migrarCidadeCache();
+  }, []);
   const isOnline = useOnlineStatus();
   const [syncing, setSyncing] = useState(false);
   const [pendenciasCount, setPendenciasCount] = useState<number | null>(null);
   const navigate = useNavigate();
 
   // Funções para gerenciar cache do último endereço usado
-  const salvarUltimoEndereco = (dados: { endereco: string; bairro: string; cidade: string }) => {
+  const salvarUltimoEndereco = (dados: { endereco: string; cidade: string }) => {
     try {
       localStorage.setItem('lastAddress', JSON.stringify(dados));
     } catch (error) {
@@ -78,7 +94,7 @@ export const HomePage = ({
     }
   };
 
-  const carregarUltimoEndereco = (): { endereco: string; bairro: string; cidade: string } | null => {
+  const carregarUltimoEndereco = (): { endereco: string; cidade: string } | null => {
     try {
       const raw = localStorage.getItem('lastAddress');
       if (!raw) return null;
@@ -95,10 +111,13 @@ export const HomePage = ({
       const ultimoEndereco = carregarUltimoEndereco();
       if (ultimoEndereco) {
         setEndereco(ultimoEndereco.endereco);
-        setBairro(ultimoEndereco.bairro);
-        setCidade(ultimoEndereco.cidade);
+        const cidadeRecuperada = ultimoEndereco.cidade === 'Lagoa dos Patos'
+          ? 'Ibiaí'
+          : (ultimoEndereco.cidade || 'Ibiaí');
+        setCidade(cidadeRecuperada);
         // Número sempre vazio
         setNumero('');
+        setNumeroProximo('');
         setSemNumero(false);
       }
     }
@@ -128,8 +147,18 @@ export const HomePage = ({
   }, [isSuperAdmin]);
 
   const handleIniciar = async () => {
-    if (!endereco || !bairro || !cidade) {
+    if (!endereco || !cidade) {
       alert('Preencha todos os campos obrigatórios!');
+      return;
+    }
+
+    if (!semNumero && !numero.trim()) {
+      alert('Informe o número da casa ou marque "Sem número".');
+      return;
+    }
+
+    if (semNumero && !numeroProximo.trim()) {
+      alert('Informe o número mais próximo.');
       return;
     }
 
@@ -142,20 +171,27 @@ export const HomePage = ({
     }
 
     try {
-      const enderecoCompleto = numero ? `${endereco}, ${numero}` : endereco;
+      let enderecoCompleto = endereco;
+
+      if (semNumero) {
+        enderecoCompleto = numeroProximo.trim()
+          ? `${endereco}, Próximo ao Nº: ${numeroProximo.trim()}`
+          : endereco;
+      } else if (numero) {
+        enderecoCompleto = `${endereco}, ${numero}`;
+      }
       
       // Salvar endereço no cache (sem o número)
       salvarUltimoEndereco({
         endereco,
-        bairro,
-        cidade
+        cidade: cidade === 'Lagoa dos Patos' ? 'Ibiaí' : cidade
       });
       
       const pesquisaId = await criarPesquisa.mutateAsync({
         formularioId,
         entrevistador: nomeEntrevistador,
         endereco: enderecoCompleto,
-        bairro,
+        bairro: '',
         cidade,
       });
 
@@ -303,26 +339,111 @@ export const HomePage = ({
 
         {/* Seção de Saudação para Pesquisadores */}
         {isPesquisador && !mostrarFormulario && (
-          <div className="page-section" style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            minHeight: '120px',
-            padding: '2rem 1rem'
-          }}>
-            <p style={{ 
-              fontSize: '1.5rem', 
-              fontWeight: '600', 
-              color: '#000000',
-              textAlign: 'center',
-              maxWidth: '600px',
-              lineHeight: '1.6',
-              margin: 0,
-              whiteSpace: 'pre-line'
+          <>
+            <div className="page-section" style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              minHeight: '120px',
+              padding: '2rem 1rem'
             }}>
-              {saudacaoAtual}
-            </p>
-          </div>
+              <p style={{ 
+                fontSize: '1.5rem', 
+                fontWeight: '600', 
+                color: '#000000',
+                textAlign: 'center',
+                maxWidth: '600px',
+                lineHeight: '1.6',
+                margin: 0,
+                whiteSpace: 'pre-line'
+              }}>
+                {saudacaoAtual}
+              </p>
+            </div>
+
+            {/* Estatísticas do Dia */}
+            {estatisticasDia && (
+              <div className="page-section" style={{ padding: '1rem' }}>
+                <div className="stats-grid" style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(3, 1fr)', 
+                  gap: '1rem',
+                  maxWidth: '600px',
+                  margin: '0 auto'
+                }}>
+                  <div className="stat-card" style={{
+                    background: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    textAlign: 'center'
+                  }}>
+                    <div className="stat-value" style={{
+                      fontSize: '2rem',
+                      fontWeight: '700',
+                      color: '#1a9bff',
+                      marginBottom: '0.1rem'
+                    }}>
+                      {estatisticasDia.realizadas}
+                    </div>
+                    <div className="stat-label" style={{
+                      fontSize: '0.9rem',
+                      color: '#6b7280',
+                      fontWeight: '500'
+                    }}>
+                      Realizadas
+                    </div>
+                  </div>
+                  <div className="stat-card" style={{
+                    background: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    textAlign: 'center'
+                  }}>
+                    <div className="stat-value" style={{
+                      fontSize: '2rem',
+                      fontWeight: '700',
+                      color: '#ef4444',
+                      marginBottom: '0.1rem'
+                    }}>
+                      {estatisticasDia.recusadas}
+                    </div>
+                    <div className="stat-label" style={{
+                      fontSize: '0.9rem',
+                      color: '#6b7280',
+                      fontWeight: '500'
+                    }}>
+                      Recusadas
+                    </div>
+                  </div>
+                  <div className="stat-card" style={{
+                    background: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    textAlign: 'center'
+                  }}>
+                    <div className="stat-value" style={{
+                      fontSize: '2rem',
+                      fontWeight: '700',
+                      color: '#6b7280',
+                      marginBottom: '0.1rem'
+                    }}>
+                      {estatisticasDia.ausentes}
+                    </div>
+                    <div className="stat-label" style={{
+                      fontSize: '0.9rem',
+                      color: '#6b7280',
+                      fontWeight: '500'
+                    }}>
+                      Ausentes
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Seção de Estatísticas - Apenas para NÃO Pesquisadores e NÃO SuperAdmin */}
@@ -392,15 +513,47 @@ export const HomePage = ({
 
                     <div className="form-group">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={numero}
-                          onChange={(e) => setNumero(e.target.value)}
-                          placeholder="Número da casa"
-                          disabled={semNumero}
-                          style={{ width: '150px', opacity: semNumero ? 0.5 : 1 }}
-                        />
+                        {!semNumero && (
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className="form-input"
+                            value={numero}
+                            onKeyDown={(e) => {
+                              // Bloqueia qualquer tecla que não seja número ou teclas de controle
+                              const tecla = e.key;
+                              const teclasPermitidas = [
+                                'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                                'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'
+                              ];
+                              
+                              // Permite teclas de controle
+                              if (teclasPermitidas.includes(tecla) || e.ctrlKey || e.metaKey) {
+                                return;
+                              }
+                              
+                              // Permite apenas números (0-9)
+                              if (!/^[0-9]$/.test(tecla)) {
+                                e.preventDefault();
+                                return false;
+                              }
+                            }}
+                            onChange={(e) => {
+                              // Remove tudo que não é número (proteção adicional)
+                              const numeros = e.target.value.replace(/\D/g, '');
+                              setNumero(numeros);
+                            }}
+                            onPaste={(e) => {
+                              // Bloqueia colar e remove caracteres não numéricos
+                              e.preventDefault();
+                              const texto = e.clipboardData.getData('text');
+                              const numeros = texto.replace(/\D/g, '');
+                              setNumero(numeros);
+                            }}
+                            placeholder="Número da casa"
+                            style={{ width: '150px' }}
+                          />
+                        )}
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
                           <input
                             type="checkbox"
@@ -409,45 +562,70 @@ export const HomePage = ({
                               setSemNumero(e.target.checked);
                               if (e.target.checked) {
                                 setNumero('');
+                                setNumeroProximo('');
+                              } else {
+                                setNumeroProximo('');
                               }
                             }}
-                            style={{ margin: 0 }}
+                            style={{ 
+                              margin: 0,
+                              width: '20px',
+                              height: '20px',
+                              minWidth: '20px',
+                              minHeight: '20px'
+                            }}
                           />
                           <span style={{ fontSize: '0.9rem', color: '#6c757d' }}>Sem número</span>
                         </label>
                       </div>
+                      {semNumero && (
+                        <div style={{ marginTop: '1rem', maxWidth: '260px', width: '100%' }}>
+                          <label className="form-label" style={{ marginBottom: '0.5rem' }}>Próximo ao Nº *</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className="form-input"
+                            value={numeroProximo}
+                            onKeyDown={(e) => {
+                              const tecla = e.key;
+                              const teclasPermitidas = [
+                                'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                                'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'
+                              ];
+
+                              if (teclasPermitidas.includes(tecla) || e.ctrlKey || e.metaKey) {
+                                return;
+                              }
+
+                              if (!/^[0-9]$/.test(tecla)) {
+                                e.preventDefault();
+                                return false;
+                              }
+                            }}
+                            onChange={(e) => {
+                              const numeros = e.target.value.replace(/\D/g, '');
+                              setNumeroProximo(numeros);
+                            }}
+                            onPaste={(e) => {
+                              e.preventDefault();
+                              const texto = e.clipboardData.getData('text');
+                              const numeros = texto.replace(/\D/g, '');
+                              setNumeroProximo(numeros);
+                            }}
+                            placeholder="Digite o número mais próximo"
+                          />
+                        </div>
+                      )}
                     </div>
 
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Bairro *</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={bairro}
-                          onChange={(e) => setBairro(e.target.value)}
-                          placeholder="Nome do bairro"
-                          required
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Cidade *</label>
-                        <select
-                          className="form-input"
-                          value={cidade}
-                          onChange={(e) => setCidade(e.target.value)}
-                          required
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <option value="">Selecione uma cidade</option>
-                          {CIDADES_DISPONIVEIS.map((cidadeOpcao) => (
-                            <option key={cidadeOpcao} value={cidadeOpcao}>
-                              {cidadeOpcao}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="form-group">
+                      <label className="form-label">Cidade *</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={cidade}
+                        readOnly
+                      />
                     </div>
                   </div>
 
@@ -464,9 +642,9 @@ export const HomePage = ({
                       disabled={
                         criarPesquisa.isPending || 
                         !endereco.trim() || 
-                        !bairro.trim() || 
                         !cidade.trim() || 
-                        (!semNumero && !numero.trim())
+                        (!semNumero && !numero.trim()) ||
+                        (semNumero && !numeroProximo.trim())
                       }
                     >
                       {criarPesquisa.isPending ? 'Carregando' : 'Confirmar'}
