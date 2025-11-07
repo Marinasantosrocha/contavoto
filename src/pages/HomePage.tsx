@@ -242,27 +242,27 @@ export const HomePage = ({
   }
 
   // Saudações rotativas para pesquisadores
+  const totalEntrevistas = estatisticasDia?.total || 0;
+  
   const saudacoes = [
-    `Até agora você entrevistou ${estatisticas?.total || 0} pessoas.\nCada resposta conta!`,
-    `Você já completou ${estatisticas?.total || 0} entrevistas.\nContinue assim!`,
-    `Você já registrou ${estatisticas?.total || 0} entrevistas.\nExcelente trabalho!`,
-    `Parabéns!\nVocê já ajudou a coletar dados de ${estatisticas?.total || 0} pessoas.`,
-    `Você está arrasando!\nAté agora, ${estatisticas?.total || 0} entrevistas concluídas.`,
-    `Vamos lá! Cada entrevista é importante.\nVocê já completou ${estatisticas?.total || 0}.`,
-    `Ótimo progresso!\n${estatisticas?.total || 0} pessoas já foram entrevistadas por você.`,
-    `Vamos juntos!\nSua contribuição até agora: ${estatisticas?.total || 0} entrevistas.`,
-    `Cada resposta conta!\nAté agora: ${estatisticas?.total || 0} pessoas entrevistadas.`,
-    `Você está fazendo a diferença!\nJá registrou ${estatisticas?.total || 0} entrevistas.`,
-    `Bom trabalho!\nAté agora, você completou ${estatisticas?.total || 0} entrevistas. Continue firme!`,
-    `Mantenha o ritmo!\n${estatisticas?.total || 0} entrevistas já foram concluídas.`,
-    `Seu progresso é de: ${estatisticas?.total || 0} entrevistas.\nCada uma importa!`,
-    `Uau! Você já entrevistou ${estatisticas?.total || 0} pessoas.\nContinue ajudando a pesquisa a crescer!`,
+    `Até agora você entrevistou ${totalEntrevistas} pessoas.\nCada resposta conta!`,
+    `Você já completou ${totalEntrevistas} entrevistas.\nContinue assim!`,
+    `Você já registrou ${totalEntrevistas} entrevistas.\nExcelente trabalho!`,
+    `Parabéns!\nVocê já ajudou a coletar dados de ${totalEntrevistas} pessoas.`,
+    `Você está arrasando!\nAté agora, ${totalEntrevistas} entrevistas concluídas.`,
+    `Vamos lá! Cada entrevista é importante.\nVocê já completou ${totalEntrevistas}.`,
+    `Ótimo progresso!\n${totalEntrevistas} pessoas já foram entrevistadas por você.`,
+    `Vamos juntos!\nSua contribuição até agora: ${totalEntrevistas} entrevistas.`,
+    `Cada resposta conta!\nAté agora: ${totalEntrevistas} pessoas entrevistadas.`,
+    `Você está fazendo a diferença!\nJá registrou ${totalEntrevistas} entrevistas.`,
+    `Bom trabalho!\nAté agora, você completou ${totalEntrevistas} entrevistas. Continue firme!`,
+    `Mantenha o ritmo!\n${totalEntrevistas} entrevistas já foram concluídas.`,
+    `Seu progresso é de: ${totalEntrevistas} entrevistas.\nCada uma importa!`,
+    `Uau! Você já entrevistou ${totalEntrevistas} pessoas.\nContinue ajudando a pesquisa a crescer!`,
   ];
 
-  const [saudacaoAtual] = useState(() => {
-    const randomIndex = Math.floor(Math.random() * saudacoes.length);
-    return saudacoes[randomIndex];
-  });
+  const [indiceSaudacao] = useState(() => Math.floor(Math.random() * saudacoes.length));
+  const saudacaoAtual = saudacoes[indiceSaudacao];
 
   return (
     <div className="app-container">
@@ -271,7 +271,7 @@ export const HomePage = ({
         <header className="modern-header home-header">
         <div className="header-content">
           <div className="header-left">
-            <h1 className="header-title">Olá, {nomeEntrevistador}</h1>
+            <h1 className="header-title">Olá, {nomeEntrevistador.split(' ')[0]}</h1>
           </div>
           <div className="header-actions">
             {/* Avatar do Usuário */}

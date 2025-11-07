@@ -351,6 +351,7 @@ export class PesquisaService {
     let realizadas = 0;
     let recusadas = 0;
     let ausentes = 0;
+    let totalGeral = 0;
 
     todasPesquisas.forEach((p: any) => {
       // Compara apenas dia/mês/ano
@@ -359,6 +360,7 @@ export class PesquisaService {
                      dataInicio.getMonth() === mesHoje && 
                      dataInicio.getFullYear() === anoHoje;
 
+      // Conta para os cards (apenas do dia)
       if (ehHoje) {
         if (p.aceite_participacao === 'true') {
           realizadas++;
@@ -368,13 +370,18 @@ export class PesquisaService {
           ausentes++;
         }
       }
+
+      // Conta para o total geral (todas as pesquisas)
+      if (p.aceite_participacao === 'true' || p.aceite_participacao === 'false' || p.aceite_participacao === 'ausente') {
+        totalGeral++;
+      }
     });
 
     return {
       realizadas,
       recusadas,
       ausentes,
-      total: realizadas + recusadas + ausentes,
+      total: totalGeral,
     };
   }
 
