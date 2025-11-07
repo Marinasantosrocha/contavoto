@@ -46,9 +46,14 @@ export const HomePage = ({
       default: return undefined;
     }
   };
-  const tipoUsuarioId: number | undefined = typeof user.tipo_usuario_id === 'number'
-    ? user.tipo_usuario_id
-    : mapTipoToId(user.tipo_usuario);
+  const tipoUsuarioId: number | undefined = (() => {
+    if (typeof user.tipo_usuario_id === 'number') return user.tipo_usuario_id;
+    if (typeof user.tipo_usuario_id === 'string') {
+      const parsed = Number(user.tipo_usuario_id);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return mapTipoToId(user.tipo_usuario);
+  })();
   const isPesquisador = tipoUsuarioId === 1; // ID do pesquisador
   const isSuperAdmin = tipoUsuarioId === 5; // ID do superadmin
   
