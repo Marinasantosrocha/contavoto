@@ -333,6 +333,51 @@ export class PesquisaService {
     };
   }
 
+  // Contar estatísticas do dia atual (offline - busca do IndexedDB)
+  static async contarEstatisticasDia(usuario_id?: number) {
+    const filtroBase = usuario_id 
+      ? (p: any) => !p.deletado && p.usuario_id === usuario_id
+      : (p: any) => !p.deletado;
+
+    // Busca todas as pesquisas do usuário
+    const todasPesquisas = await db.pesquisas.filter(filtroBase).toArray();
+
+    // Data de hoje (apenas dia/mês/ano, sem horário)
+    const hoje = new Date();
+    const diaHoje = hoje.getDate();
+    const mesHoje = hoje.getMonth();
+    const anoHoje = hoje.getFullYear();
+
+    let realizadas = 0;
+    let recusadas = 0;
+    let ausentes = 0;
+
+    todasPesquisas.forEach((p: any) => {
+      // Compara apenas dia/mês/ano
+      const dataInicio = new Date(p.iniciadaEm);
+      const ehHoje = dataInicio.getDate() === diaHoje && 
+                     dataInicio.getMonth() === mesHoje && 
+                     dataInicio.getFullYear() === anoHoje;
+
+      if (ehHoje) {
+        if (p.aceite_participacao === 'true') {
+          realizadas++;
+        } else if (p.aceite_participacao === 'false') {
+          recusadas++;
+        } else if (p.aceite_participacao === 'ausente') {
+          ausentes++;
+        }
+      }
+    });
+
+    return {
+      realizadas,
+      recusadas,
+      ausentes,
+      total: realizadas + recusadas + ausentes,
+    };
+  }
+
   // ============ SINCRONIZAÇÃO ============
 
   static async sincronizar() {
