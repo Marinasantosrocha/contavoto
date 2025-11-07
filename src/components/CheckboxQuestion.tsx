@@ -235,26 +235,22 @@ export default function CheckboxQuestion({
                   type="tel"
                   inputMode="numeric"
                   value={(() => {
-                    // Exibe formato (38) 9 9999-9999 durante digitação
+                    // Exibe formato (XX) 9 9999-9999 durante digitação
                     if (naoTemTelefone) return '';
-                    if (!valor) return '(38) '; // Pré-preenche com DDD 38
+                    if (!valor) return '';
                     
                     const numeros = String(valor).replace(/\D/g, '');
                     
-                    // Se não tem DDD ainda, adiciona 38
-                    if (numeros.length === 0) return '(38) ';
+                    if (numeros.length === 0) return '';
                     
-                    // Garante que tem pelo menos 2 dígitos (DDD)
-                    let ddd = numeros.slice(0, 2);
-                    if (ddd.length < 2) {
-                      // Se tem menos de 2 dígitos, completa com 38
-                      ddd = ddd.length === 0 ? '38' : ddd + '38'.slice(ddd.length);
-                    }
-                    
+                    // DDD (primeiros 2 dígitos)
+                    const ddd = numeros.slice(0, 2);
                     const numero = numeros.slice(2);
                     
                     // Formata: (XX) X XXXX-XXXX
-                    if (numero.length === 0) {
+                    if (numeros.length <= 2) {
+                      return `(${numeros}`;
+                    } else if (numero.length === 0) {
                       return `(${ddd}) `;
                     } else if (numero.length <= 1) {
                       return `(${ddd}) ${numero}`;
@@ -267,14 +263,6 @@ export default function CheckboxQuestion({
                   onChange={(e) => {
                     // Remove tudo que não é número
                     let numeros = e.target.value.replace(/\D/g, '');
-                    
-                    // Se está vazio ou só tem menos de 2 dígitos, pré-preenche com 38
-                    if (numeros.length === 0) {
-                      numeros = '38';
-                    } else if (numeros.length < 2) {
-                      // Se tem 1 dígito, completa com 38
-                      numeros = '38' + numeros;
-                    }
                     
                     // Limita a 11 dígitos (2 DDD + 9 número)
                     const numerosLimitados = numeros.slice(0, 11);
