@@ -49,19 +49,28 @@ export default function CheckboxQuestion({
   }, [campo.id, numeroPergunta]);
 
   useEffect(() => {
-    if (isCampoDataNascimento) {
+    if (isCampoDataNascimento && valor) {
       const partes = typeof valor === 'string'
         ? valor.split(/[^0-9]/).filter(Boolean)
         : [];
-      setDiaNascimento(partes[0] || '');
-      setMesNascimento(partes[1] || '');
-      setAnoNascimento(partes[2] || '');
-    } else {
+      // Só atualiza se os valores forem diferentes (evita loop)
+      const novoDia = partes[0] || '';
+      const novoMes = partes[1] || '';
+      const novoAno = partes[2] || '';
+      
+      if (novoDia !== diaNascimento || novoMes !== mesNascimento || novoAno !== anoNascimento) {
+        setDiaNascimento(novoDia);
+        setMesNascimento(novoMes);
+        setAnoNascimento(novoAno);
+      }
+    }
+    // Resetar quando mudar de campo
+    if (!isCampoDataNascimento && (diaNascimento || mesNascimento || anoNascimento)) {
       setDiaNascimento('');
       setMesNascimento('');
       setAnoNascimento('');
     }
-  }, [isCampoDataNascimento, valor]);
+  }, [campo.id]); // Só executa quando muda de campo
 
   const atualizarDataNascimento = (dia: string, mes: string, ano: string) => {
     const partesOrdenadas = [dia, mes, ano];
