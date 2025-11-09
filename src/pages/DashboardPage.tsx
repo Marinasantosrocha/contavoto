@@ -23,7 +23,7 @@ export const DashboardPage = ({
   onNavigateHome, 
   onNavigatePesquisas
 }: DashboardPageProps) => {
-  const [periodoSelecionado, setPeriodoSelecionado] = useState<Periodo>('hoje');
+  const [periodoSelecionado, setPeriodoSelecionado] = useState<Periodo>('todos');
   const [pesquisadorSelecionado, setPesquisadorSelecionado] = useState<number | null>(null);
   const [formularioSelecionado, setFormularioSelecionado] = useState<string | null>(null);
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
@@ -164,6 +164,16 @@ export const DashboardPage = ({
             onChange={(value) => setPeriodoSelecionado(value as Periodo)}
           />
 
+          {/* Cidade */}
+          <div style={{ marginTop: '1rem' }}>
+            <SimpleSelect
+              label="Cidade"
+              options={opcoesCidades}
+              value={cidadeSelecionada || ''}
+              onChange={(value) => setCidadeSelecionada((value as string) || null)}
+            />
+          </div>
+
           {/* Filtro de Pesquisador (apenas para não-pesquisadores) */}
           {!isPesquisador && (
             <div style={{ marginTop: '1rem' }}>
@@ -178,16 +188,6 @@ export const DashboardPage = ({
               />
             </div>
           )}
-
-          {/* Cidade */}
-          <div style={{ marginTop: '1rem' }}>
-            <SimpleSelect
-              label="Cidade"
-              options={opcoesCidades}
-              value={cidadeSelecionada || ''}
-              onChange={(value) => setCidadeSelecionada((value as string) || null)}
-            />
-          </div>
         </div>
 
         {/* Taxa de Aceite */}
