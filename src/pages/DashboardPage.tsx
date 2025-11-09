@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useEstatisticasPesquisas, usePesquisas, usePesquisadores } from '../hooks/usePesquisas';
+import { useEstatisticasPesquisas, usePesquisas, usePesquisadores, useCidades, usePesquisasSupabase } from '../hooks/usePesquisas';
 import { useFormularios } from '../hooks/useFormularios';
 import { useRfbAnalytics } from '../hooks/useRfbAnalytics';
 import { useProdutividade } from '../hooks/useProdutividade';
@@ -27,7 +27,6 @@ export const DashboardPage = ({
   const [pesquisadorSelecionado, setPesquisadorSelecionado] = useState<number | null>(null);
   const [formularioSelecionado, setFormularioSelecionado] = useState<string | null>(null);
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
-  const [bairroSelecionado, setBairroSelecionado] = useState<string | null>(null);
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<Record<string, string | null>>({});
   
   // Obter usuário logado
@@ -39,56 +38,32 @@ export const DashboardPage = ({
   // Buscar dados - aplicar filtro de usuário para pesquisadores
   const filtroUsuario = isPesquisador ? usuarioId : pesquisadorSelecionado;
   const { data: estatisticas } = useEstatisticasPesquisas(filtroUsuario || undefined);
-  const { data: pesquisas = [] } = usePesquisas();
+  
+  // Buscar pesquisas direto do Supabase com filtros aplicados
+  const { data: pesquisas = [] } = usePesquisasSupabase({
+    periodo: periodoSelecionado,
+    pesquisadorId: filtroUsuario,
+    cidade: cidadeSelecionada,
+  });
+  
   const { data: pesquisadores = [] } = usePesquisadores();
   const { data: formularios = [] } = useFormularios();
   const { data: produtividade = [] } = useProdutividade();
+  const { data: cidadesSupabase = [] } = useCidades();
 
-  // Filtrar pesquisas por pesquisador (se for pesquisador logado, apenas suas pesquisas)
-  const pesquisasPorPesquisador = pesquisas.filter(p => {
-    if (isPesquisador) {
-      return p.usuario_id === usuarioId;
-    }
-    if (pesquisadorSelecionado) {
-      return p.usuario_id === pesquisadorSelecionado;
-    }
-    return true; // Mostra todas se for admin/suporte sem filtro
-  });
-
-  // Filtrar pesquisas por período
-  const pesquisasFiltradas = pesquisasPorPesquisador.filter(p => {
-    if (periodoSelecionado === 'todos') return true;
-    
-    const dataInicio = new Date(p.iniciadaEm);
-    const hoje = new Date();
-    
-    if (periodoSelecionado === 'hoje') {
-      return dataInicio.toDateString() === hoje.toDateString();
-    }
-    
-    if (periodoSelecionado === 'semana') {
-      const umaSemanaAtras = new Date();
-      umaSemanaAtras.setDate(hoje.getDate() - 7);
-      return dataInicio >= umaSemanaAtras;
-    }
-    
-    if (periodoSelecionado === 'mes') {
-      const umMesAtras = new Date();
-      umMesAtras.setMonth(hoje.getMonth() - 1);
-      return dataInicio >= umMesAtras;
-    }
-    
-    return true;
-  });
+  // As pesquisas já vêm filtradas do Supabase
+  const pesquisasFiltradas = pesquisas;
 
   // Calcular estatísticas do período
-  const aceitaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === true).length;
-  const recusaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === false).length;
+  const aceitaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === 'true' || p.aceite_participacao === true).length;
+  const recusaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === 'false' || p.aceite_participacao === false).length;
+  const ausentesPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === 'ausente').length;
   
   // Taxa de aceite
-  const totalAbordagens = aceitaramPeriodo + recusaramPeriodo;
+  const totalAbordagens = aceitaramPeriodo + recusaramPeriodo + ausentesPeriodo;
   const taxaAceite = totalAbordagens > 0 ? (aceitaramPeriodo / totalAbordagens) * 100 : 0;
   const taxaRecusa = totalAbordagens > 0 ? (recusaramPeriodo / totalAbordagens) * 100 : 0;
+  const taxaAusente = totalAbordagens > 0 ? (ausentesPeriodo / totalAbordagens) * 100 : 0;
 
   // Agrupar recusas por motivo
   const motivosRecusa: { [key: string]: number } = {};
@@ -98,16 +73,6 @@ export const DashboardPage = ({
       motivosRecusa[p.motivo_recusa!] = (motivosRecusa[p.motivo_recusa!] || 0) + 1;
     });
 
-  // Agrupar por bairro
-  const pesquisasPorBairro: { [key: string]: number } = {};
-  pesquisasFiltradas.forEach(p => {
-    const bairro = p.bairro || 'Não informado';
-    pesquisasPorBairro[bairro] = (pesquisasPorBairro[bairro] || 0) + 1;
-  });
-
-  // Ordenar bairros por quantidade (todos)
-  const bairrosOrdenados = Object.entries(pesquisasPorBairro)
-    .sort(([, a], [, b]) => b - a);
 
   // Opções de filtros adicionais
   const opcoesFormularios = useMemo(() => ([
@@ -118,20 +83,12 @@ export const DashboardPage = ({
   ]), [formularios]);
 
   const opcoesCidades = useMemo(() => {
-    const set = new Set<string>();
-    pesquisasPorPesquisador.forEach(p => { if (p.cidade) set.add(p.cidade); });
-    const arr = Array.from(set).sort((a, b) => a.localeCompare(b));
-    return [{ value: '', label: 'Todas as Cidades' }, ...arr.map(c => ({ value: c, label: c }))];
-  }, [pesquisasPorPesquisador]);
-
-  const opcoesBairros = useMemo(() => {
-    const set = new Set<string>();
-    pesquisasPorPesquisador
-      .filter(p => !cidadeSelecionada || p.cidade === cidadeSelecionada)
-      .forEach(p => { if (p.bairro) set.add(p.bairro); });
-    const arr = Array.from(set).sort((a, b) => a.localeCompare(b));
-    return [{ value: '', label: 'Todos os Bairros' }, ...arr.map(b => ({ value: b, label: b }))];
-  }, [pesquisasPorPesquisador, cidadeSelecionada]);
+    // Busca cidades direto do Supabase, não do IndexedDB local
+    return [
+      { value: '', label: 'Todas as Cidades' }, 
+      ...cidadesSupabase.map(c => ({ value: c, label: c }))
+    ];
+  }, [cidadesSupabase]);
 
   // Buscar agregações da RFB (respostas normalizadas) para perguntas de múltipla escolha
   const { data: rfbAgg } = useRfbAnalytics({
@@ -139,7 +96,6 @@ export const DashboardPage = ({
     pesquisadorId: filtroUsuario || null,
     formularioUuid: formularioSelecionado,
     cidade: cidadeSelecionada,
-    bairro: bairroSelecionado,
     categorySelections: opcoesSelecionadas,
   });
 
@@ -223,7 +179,7 @@ export const DashboardPage = ({
             </div>
           )}
 
-          {/* Cidade e Bairro */}
+          {/* Cidade */}
           <div style={{ marginTop: '1rem' }}>
             <SimpleSelect
               label="Cidade"
@@ -232,21 +188,20 @@ export const DashboardPage = ({
               onChange={(value) => setCidadeSelecionada((value as string) || null)}
             />
           </div>
-          <div style={{ marginTop: '1rem' }}>
-            <SimpleSelect
-              label="Bairro"
-              options={opcoesBairros}
-              value={bairroSelecionado || ''}
-              onChange={(value) => setBairroSelecionado((value as string) || null)}
-            />
-          </div>
         </div>
 
         {/* Taxa de Aceite */}
         <div className="page-section">
           <ChartCard title="Taxa de Aceite" subtitle={`Base: ${totalAbordagens} abordagens no período`}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 360px) 1fr', gap: '1.25rem', alignItems: 'center' }}>
-              <DonutChart data={[{ name: 'Aceitaram', value: aceitaramPeriodo }, { name: 'Recusaram', value: recusaramPeriodo }]} />
+              <DonutChart 
+                data={[
+                  { name: 'Aceitaram', value: aceitaramPeriodo }, 
+                  { name: 'Recusaram', value: recusaramPeriodo },
+                  { name: 'Ausentes', value: ausentesPeriodo }
+                ]}
+                colors={['#1a9bff', '#FF7B7B', '#64748B']}
+              />
               <div className="taxa-container">
                 <div className="taxa-chart">
                   <div className="taxa-bar-container">
@@ -268,6 +223,17 @@ export const DashboardPage = ({
                     <div className="taxa-bar">
                       <div className="taxa-bar-fill danger" style={{ width: `${taxaRecusa}%` }}>
                         {recusaramPeriodo}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="taxa-bar-container">
+                    <div className="taxa-bar-label">
+                      <span>Ausentes</span>
+                      <span className="taxa-percentage" style={{ color: '#64748B' }}>{taxaAusente.toFixed(1)}%</span>
+                    </div>
+                    <div className="taxa-bar">
+                      <div className="taxa-bar-fill" style={{ width: `${taxaAusente}%`, backgroundColor: '#64748B' }}>
+                        {ausentesPeriodo}
                       </div>
                     </div>
                   </div>
@@ -402,14 +368,6 @@ export const DashboardPage = ({
           </div>
         )}
 
-        {/* Bairros */}
-        {bairrosOrdenados.length > 0 && (
-          <div className="page-section">
-            <ChartCard title="Top Bairros" subtitle={`Base: ${pesquisasFiltradas.length} pesquisas`}>
-              <BarHorizontal data={bairrosOrdenados.map(([name, value]) => ({ name, value }))} />
-            </ChartCard>
-          </div>
-        )}
 
         {/* Produtividade dos Pesquisadores */}
         <div className="page-section">
