@@ -377,16 +377,47 @@ export const DashboardPage = ({
           >
             {produtividade && produtividade.length > 0 ? (
               <div style={{ marginTop: '1rem' }}>
-                {produtividade.map((item) => (
+                {produtividade.map((item) => {
+                  // Calcular estatísticas de aceite/recusa/ausente para este pesquisador
+                  // Usar 'pesquisas' (todas do período) em vez de 'pesquisasFiltradas' (que pode ter filtros adicionais)
+                  const pesquisasDoPesquisador = pesquisas.filter(p => p.entrevistador === item.entrevistador);
+                  const aceitas = pesquisasDoPesquisador.filter(p => p.aceite_participacao === 'true' || p.aceite_participacao === true).length;
+                  const recusadas = pesquisasDoPesquisador.filter(p => p.aceite_participacao === 'false' || p.aceite_participacao === false).length;
+                  const ausentes = pesquisasDoPesquisador.filter(p => p.aceite_participacao === 'ausente').length;
+                  const totalFiltrado = aceitas + recusadas + ausentes;
+                  
+                  // Não mostrar pesquisadores com 0 entrevistas no período filtrado
+                  if (totalFiltrado === 0) return null;
+                  
+                  return (
                   <div key={item.entrevistador} style={{ marginBottom: '2rem' }}>
                     <h4 style={{ 
                       fontSize: '16px', 
                       fontWeight: '600', 
                       color: '#1f2937',
-                      marginBottom: '0.75rem'
+                      marginBottom: '0.5rem'
                     }}>
-                      {item.entrevistador} ({item.total_entrevistas} entrevistas)
+                      {item.entrevistador} ({totalFiltrado} entrevistas)
                     </h4>
+                    
+                    {/* Estatísticas de Aceite/Recusa/Ausente */}
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '1rem', 
+                      marginBottom: '1rem',
+                      fontSize: '13px',
+                      color: '#6b7280'
+                    }}>
+                      <span>
+                        <strong style={{ color: '#1a9bff' }}>{aceitas}</strong> aceitas
+                      </span>
+                      <span>
+                        <strong style={{ color: '#FF7B7B' }}>{recusadas}</strong> recusadas
+                      </span>
+                      <span>
+                        <strong style={{ color: '#64748B' }}>{ausentes}</strong> ausentes
+                      </span>
+                    </div>
                     
                     {/* Duração Média */}
                     <div style={{ marginBottom: '1rem' }}>
@@ -464,7 +495,8 @@ export const DashboardPage = ({
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
                 
                 <div style={{ 
                   marginTop: '1.5rem', 
