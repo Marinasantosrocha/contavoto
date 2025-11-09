@@ -177,4 +177,81 @@ export const usePesquisadores = () => {
   });
 };
 
+// Hook para buscar cidades únicas do Supabase
+export const useCidades = () => {
+  return useQuery({
+    queryKey: ['cidades'],
+    queryFn: async () => {
+      const { supabase } = await import('../services/supabaseClient');
+      const { data, error } = await supabase
+        .from('pesquisas')
+        .select('cidade')
+        .not('cidade', 'is', null)
+        .order('cidade');
+      
+      if (error) throw error;
+      
+      // Extrair cidades únicas
+      const cidadesUnicas = [...new Set((data || []).map((p: any) => p.cidade))];
+      return cidadesUnicas.sort((a, b) => a.localeCompare(b));
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+};
+
+// Hook para buscar pesquisas do Supabase (não do IndexedDB)
+export const usePesquisasSupabase = (filtros?: {
+  periodo?: 'hoje' | 'semana' | 'mes' | 'todos';
+  pesquisadorId?: number | null;
+  cidade?: string | null;
+}) => {
+  return useQuery({
+    queryKey: ['pesquisas-supabase', filtros],
+    queryFn: async () => {
+      const { supabase } = await import('../services/supabaseClient');
+      
+      let query = supabase
+        .from('pesquisas')
+        .select('*')
+        .order('iniciada_em', { ascending: false });
+      
+      // Filtro de período
+      if (filtros?.periodo && filtros.periodo !== 'todos') {
+        const hoje = new Date();
+        let dataInicio: Date;
+        
+        if (filtros.periodo === 'hoje') {
+          dataInicio = new Date(hoje.setHours(0, 0, 0, 0));
+        } else if (filtros.periodo === 'semana') {
+          dataInicio = new Date();
+          dataInicio.setDate(hoje.getDate() - 7);
+        } else if (filtros.periodo === 'mes') {
+          dataInicio = new Date();
+          dataInicio.setMonth(hoje.getMonth() - 1);
+        } else {
+          dataInicio = new Date(0); // Todas
+        }
+        
+        query = query.gte('iniciada_em', dataInicio.toISOString());
+      }
+      
+      // Filtro de pesquisador
+      if (filtros?.pesquisadorId) {
+        query = query.eq('usuario_id', filtros.pesquisadorId);
+      }
+      
+      // Filtro de cidade
+      if (filtros?.cidade) {
+        query = query.eq('cidade', filtros.cidade);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 30, // 30 segundos
+  });
+};
+
 

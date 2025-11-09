@@ -1,8 +1,6 @@
 import { useState, useMemo } from 'react';
-import { usePesquisas, usePesquisadores } from '../hooks/usePesquisas';
-import { useAceiteStats } from '../hooks/useAceiteStats';
-import { useAceitePorEntrevistador } from '../hooks/useAceitePorEntrevistador';
-// import { useFormularios } from '../hooks/useFormularios';
+import { useEstatisticasPesquisas, usePesquisas, usePesquisadores, useCidades, usePesquisasSupabase } from '../hooks/usePesquisas';
+import { useFormularios } from '../hooks/useFormularios';
 import { useRfbAnalytics } from '../hooks/useRfbAnalytics';
 import { useProdutividade } from '../hooks/useProdutividade';
 import { RFB_FIELDS, getFieldLabel, orderEntries } from '../data/rfbMappings';
@@ -25,11 +23,10 @@ export const DashboardPage = ({
   onNavigateHome, 
   onNavigatePesquisas
 }: DashboardPageProps) => {
-  const [periodoSelecionado, setPeriodoSelecionado] = useState<Periodo>('hoje');
+  const [periodoSelecionado, setPeriodoSelecionado] = useState<Periodo>('todos');
   const [pesquisadorSelecionado, setPesquisadorSelecionado] = useState<number | null>(null);
-  const [formularioSelecionado, _setFormularioSelecionado] = useState<string | null>(null);
+  const [formularioSelecionado, setFormularioSelecionado] = useState<string | null>(null);
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
-  const [bairroSelecionado, setBairroSelecionado] = useState<string | null>(null);
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<Record<string, string | null>>({});
   
   // Obter usuário logado
@@ -40,97 +37,57 @@ export const DashboardPage = ({
 
   // Buscar dados - aplicar filtro de usuário para pesquisadores
   const filtroUsuario = isPesquisador ? usuarioId : pesquisadorSelecionado;
-  const { data: pesquisas = [] } = usePesquisas();
+  const { data: estatisticas } = useEstatisticasPesquisas(filtroUsuario || undefined);
+  
+  // Buscar pesquisas direto do Supabase com filtros aplicados
+  const { data: pesquisas = [] } = usePesquisasSupabase({
+    periodo: periodoSelecionado,
+    pesquisadorId: filtroUsuario,
+    cidade: cidadeSelecionada,
+  });
+  
   const { data: pesquisadores = [] } = usePesquisadores();
+  const { data: formularios = [] } = useFormularios();
   const { data: produtividade = [] } = useProdutividade();
-  const { data: aceiteStats } = useAceiteStats();
-  const { data: aceitePorEntrevistador = {} } = useAceitePorEntrevistador();
+  const { data: cidadesSupabase = [] } = useCidades();
 
-  // Filtrar pesquisas por pesquisador (se for pesquisador logado, apenas suas pesquisas)
-  const pesquisasPorPesquisador = pesquisas.filter(p => {
-    if (isPesquisador) {
-      return p.usuario_id === usuarioId;
-    }
-    if (pesquisadorSelecionado) {
-      return p.usuario_id === pesquisadorSelecionado;
-    }
-    return true; // Mostra todas se for admin/suporte sem filtro
-  });
+  // As pesquisas já vêm filtradas do Supabase
+  const pesquisasFiltradas = pesquisas;
 
-  // Filtrar pesquisas por período
-  const pesquisasFiltradas = pesquisasPorPesquisador.filter(p => {
-    if (periodoSelecionado === 'todos') return true;
-    
-    const dataInicio = new Date(p.iniciadaEm);
-    const hoje = new Date();
-    
-    if (periodoSelecionado === 'hoje') {
-      return dataInicio.toDateString() === hoje.toDateString();
-    }
-    
-    if (periodoSelecionado === 'semana') {
-      const umaSemanaAtras = new Date();
-      umaSemanaAtras.setDate(hoje.getDate() - 7);
-      return dataInicio >= umaSemanaAtras;
-    }
-    
-    if (periodoSelecionado === 'mes') {
-      const umMesAtras = new Date();
-      umMesAtras.setMonth(hoje.getMonth() - 1);
-      return dataInicio >= umMesAtras;
-    }
-    
-    return true;
-  });
-
-  // Aceitas/Ausentes por entrevistador, a partir do Supabase, sem filtros adicionais
-  const getContagemEntrevistador = (nome: string) => {
-    return aceitePorEntrevistador[nome] || { aceitas: 0, ausentes: 0, total: 0 };
-  };
-
-  // Estatística de aceite (global, somente coluna aceite_participacao)
-  const aceitaramPeriodo = aceiteStats?.aceitaram ?? 0;
-  const recusaramPeriodo = aceiteStats?.recusaram ?? 0;
-  const totalAbordagens = aceiteStats?.total ?? 0;
+  // Calcular estatísticas do período
+  const aceitaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === 'true' || p.aceite_participacao === true).length;
+  const recusaramPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === 'false' || p.aceite_participacao === false).length;
+  const ausentesPeriodo = pesquisasFiltradas.filter(p => p.aceite_participacao === 'ausente').length;
+  
+  // Taxa de aceite
+  const totalAbordagens = aceitaramPeriodo + recusaramPeriodo + ausentesPeriodo;
   const taxaAceite = totalAbordagens > 0 ? (aceitaramPeriodo / totalAbordagens) * 100 : 0;
   const taxaRecusa = totalAbordagens > 0 ? (recusaramPeriodo / totalAbordagens) * 100 : 0;
+  const taxaAusente = totalAbordagens > 0 ? (ausentesPeriodo / totalAbordagens) * 100 : 0;
 
-  // Agrupar recusas por motivo
-  const motivosRecusa: { [key: string]: number } = {};
-  pesquisasFiltradas
-    .filter(p => p.motivo_recusa)
-    .forEach(p => {
-      motivosRecusa[p.motivo_recusa!] = (motivosRecusa[p.motivo_recusa!] || 0) + 1;
-    });
+  // Calcular distribuição de autorização de contato
+  const autorizouContato = pesquisasFiltradas.filter(p => p.autorizacao_contato === 'Sim, autorizo').length;
+  const naoAutorizouContato = pesquisasFiltradas.filter(p => p.autorizacao_contato === 'Não autorizo').length;
+  const totalRespostasContato = autorizouContato + naoAutorizouContato;
+  const taxaAutorizacao = totalRespostasContato > 0 ? (autorizouContato / totalRespostasContato) * 100 : 0;
+  const taxaNaoAutorizacao = totalRespostasContato > 0 ? (naoAutorizouContato / totalRespostasContato) * 100 : 0;
 
-  // Agrupar por bairro
-  const pesquisasPorBairro: { [key: string]: number } = {};
-  pesquisasFiltradas.forEach(p => {
-    const bairro = p.bairro || 'Não informado';
-    pesquisasPorBairro[bairro] = (pesquisasPorBairro[bairro] || 0) + 1;
-  });
 
-  // Ordenar bairros por quantidade (todos)
-  const bairrosOrdenados = Object.entries(pesquisasPorBairro)
-    .sort(([, a], [, b]) => b - a);
-
-  // Opções de filtros adicionais (removido: formulário não utilizado nesta tela)
+  // Opções de filtros adicionais
+  const opcoesFormularios = useMemo(() => ([
+    { value: '', label: 'Todos os Formulários' },
+    ...formularios
+      .filter((f: any) => !!f?.uuid)
+      .map((f: any) => ({ value: f.uuid as string, label: f.nome as string }))
+  ]), [formularios]);
 
   const opcoesCidades = useMemo(() => {
-    const set = new Set<string>();
-    pesquisasPorPesquisador.forEach(p => { if (p.cidade) set.add(p.cidade); });
-    const arr = Array.from(set).sort((a, b) => a.localeCompare(b));
-    return [{ value: '', label: 'Todas as Cidades' }, ...arr.map(c => ({ value: c, label: c }))];
-  }, [pesquisasPorPesquisador]);
-
-  const opcoesBairros = useMemo(() => {
-    const set = new Set<string>();
-    pesquisasPorPesquisador
-      .filter(p => !cidadeSelecionada || p.cidade === cidadeSelecionada)
-      .forEach(p => { if (p.bairro) set.add(p.bairro); });
-    const arr = Array.from(set).sort((a, b) => a.localeCompare(b));
-    return [{ value: '', label: 'Todos os Bairros' }, ...arr.map(b => ({ value: b, label: b }))];
-  }, [pesquisasPorPesquisador, cidadeSelecionada]);
+    // Busca cidades direto do Supabase, não do IndexedDB local
+    return [
+      { value: '', label: 'Todas as Cidades' }, 
+      ...cidadesSupabase.map(c => ({ value: c, label: c }))
+    ];
+  }, [cidadesSupabase]);
 
   // Buscar agregações da RFB (respostas normalizadas) para perguntas de múltipla escolha
   const { data: rfbAgg } = useRfbAnalytics({
@@ -138,9 +95,16 @@ export const DashboardPage = ({
     pesquisadorId: filtroUsuario || null,
     formularioUuid: formularioSelecionado,
     cidade: cidadeSelecionada,
-    bairro: bairroSelecionado,
     categorySelections: opcoesSelecionadas,
   });
+
+
+  const scaleColors: Record<string, string> = {
+    'Piorou': '#FF7B7B',
+    'Está Igual': '#64748B',
+    'Melhorou': '#1a9bff',
+    'Não sei': '#CBD5E1',
+  };
 
   // beautify não é mais usado; labels amigáveis vêm de rfbMappings
 
@@ -199,6 +163,16 @@ export const DashboardPage = ({
             onChange={(value) => setPeriodoSelecionado(value as Periodo)}
           />
 
+          {/* Cidade */}
+          <div style={{ marginTop: '1rem' }}>
+            <SimpleSelect
+              label="Cidade"
+              options={opcoesCidades}
+              value={cidadeSelecionada || ''}
+              onChange={(value) => setCidadeSelecionada((value as string) || null)}
+            />
+          </div>
+
           {/* Filtro de Pesquisador (apenas para não-pesquisadores) */}
           {!isPesquisador && (
             <div style={{ marginTop: '1rem' }}>
@@ -213,37 +187,19 @@ export const DashboardPage = ({
               />
             </div>
           )}
-
-          {/* Cidade e Bairro */}
-          <div style={{ marginTop: '1rem' }}>
-            <SimpleSelect
-              label="Cidade"
-              options={opcoesCidades}
-              value={cidadeSelecionada || ''}
-              onChange={(value) => setCidadeSelecionada((value as string) || null)}
-            />
-          </div>
-          <div style={{ marginTop: '1rem' }}>
-            <SimpleSelect
-              label="Bairro"
-              options={opcoesBairros}
-              value={bairroSelecionado || ''}
-              onChange={(value) => setBairroSelecionado((value as string) || null)}
-            />
-          </div>
         </div>
 
         {/* Taxa de Aceite */}
         <div className="page-section">
-          <ChartCard title="Taxa de Aceite" subtitle={`Base: ${totalAbordagens} abordagens`}>
+          <ChartCard title="Taxa de Aceite" subtitle={`${totalAbordagens} abordagens no período`}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 360px) 1fr', gap: '1.25rem', alignItems: 'center' }}>
               <DonutChart 
                 data={[
                   { name: 'Aceitaram', value: aceitaramPeriodo }, 
-                  { name: 'Recusaram', value: recusaramPeriodo }
+                  { name: 'Recusaram', value: recusaramPeriodo },
+                  { name: 'Ausentes', value: ausentesPeriodo }
                 ]}
-                // Azul primário para Aceitaram, Vermelho para Recusaram (alinhado com barras)
-                colors={["#1a9bff", "#FF7B7B"]}
+                colors={['#1a9bff', '#FF7B7B', '#64748B']}
               />
               <div className="taxa-container">
                 <div className="taxa-chart">
@@ -269,17 +225,65 @@ export const DashboardPage = ({
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="taxa-summary">
-                  <div className="taxa-summary-item">
-                    <span className="taxa-summary-label">Total de Abordagens:</span>
-                    <span className="taxa-summary-value">{totalAbordagens}</span>
+                  <div className="taxa-bar-container">
+                    <div className="taxa-bar-label">
+                      <span>Ausentes</span>
+                      <span className="taxa-percentage" style={{ color: '#64748B' }}>{taxaAusente.toFixed(1)}%</span>
+                    </div>
+                    <div className="taxa-bar">
+                      <div className="taxa-bar-fill" style={{ width: `${taxaAusente}%`, backgroundColor: '#64748B' }}>
+                        {ausentesPeriodo}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </ChartCard>
         </div>
+
+        {/* Autorização de Contato */}
+        {totalRespostasContato > 0 && (
+          <div className="page-section">
+            <ChartCard title="Autorização de Contato" subtitle={`${totalRespostasContato} respostas no período`}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 360px) 1fr', gap: '1.25rem', alignItems: 'center' }}>
+                <DonutChart 
+                  data={[
+                    { name: 'Sim, autorizo', value: autorizouContato }, 
+                    { name: 'Não autorizo', value: naoAutorizouContato }
+                  ]}
+                  colors={['#1a9bff', '#FF7B7B']}
+                />
+                <div className="taxa-container">
+                  <div className="taxa-chart">
+                    <div className="taxa-bar-container">
+                      <div className="taxa-bar-label">
+                        <span>Sim, autorizo</span>
+                        <span className="taxa-percentage">{taxaAutorizacao.toFixed(1)}%</span>
+                      </div>
+                      <div className="taxa-bar">
+                        <div className="taxa-bar-fill success" style={{ width: `${taxaAutorizacao}%` }}>
+                          {autorizouContato}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="taxa-bar-container">
+                      <div className="taxa-bar-label">
+                        <span>Não autorizo</span>
+                        <span className="taxa-percentage danger">{taxaNaoAutorizacao.toFixed(1)}%</span>
+                      </div>
+                      <div className="taxa-bar">
+                        <div className="taxa-bar-fill danger" style={{ width: `${taxaNaoAutorizacao}%` }}>
+                          {naoAutorizouContato}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ChartCard>
+          </div>
+        )}
 
         {/* Opiniões por Tema (RFB) */}
         <div className="page-section">
@@ -324,90 +328,12 @@ export const DashboardPage = ({
                   />
                 </div>
 
-                {/* 2) Indicadores Binários - barras empilhadas 100% */}
-                <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Indicadores de Aprovação</h4>
-                  </div>
-                  <Stacked100BarList
-                    rows={RFB_FIELDS.filter(f => f.type === 'binary').map(f => ({
-                      key: f.key,
-                      label: f.label,
-                      dist: rfbAgg.distribuicoes[f.key] || {},
-                      order: f.order,
-                    }))}
-                    onSegmentClick={(field, opt) => handleSliceClick(field, opt)}
-                  />
-                </div>
-
-                {/* 3) Perfil: Faixa etária e Tempo de moradia - donuts por campo */}
-                <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Perfil dos Entrevistados</h4>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-                    {RFB_FIELDS.filter(f => f.type === 'ordinal').map(f => {
-                      const dist = rfbAgg.distribuicoes[f.key] || {};
-                      const entries = orderEntries(Object.entries(dist), f.key);
-                      if (entries.length === 0) return null;
-                      const data = entries.map(([name, value]) => ({ name, value }));
-                      return (
-                        <div key={f.key} className="card" style={{ padding: '0.5rem' }}>
-                          <div className="card-header" style={{ padding: '0.25rem 0.5rem' }}>
-                            <h5 className="card-title" style={{ fontSize: '0.95rem' }}>{f.label}</h5>
-                          </div>
-                          <DonutChart data={data} height={240} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 4) Principais Temas (Top 8) - barras horizontais em % */}
-                <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Principais Temas</h4>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-                    {(['problema_cidade','area_avanco','prioridade_deputado'] as const).map((campo) => {
-                      const dist = rfbAgg.distribuicoes[campo] || {};
-                      const entries = Object.entries(dist).filter(([,v]) => v > 0);
-                      if (entries.length === 0) return null;
-                      const data = entries.map(([name, value]) => ({ name, value }));
-                      return (
-                        <div key={campo} className="card" style={{ padding: '0.25rem 0.5rem' }}>
-                          <div className="card-header" style={{ padding: '0.25rem 0.5rem' }}>
-                            <h5 className="card-title" style={{ fontSize: '0.95rem' }}>{RFB_FIELDS.find(f => f.key === campo)?.label}</h5>
-                          </div>
-                          <BarHorizontal data={data} maxBars={8} normalizePercent />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             )}
           </ChartCard>
         </div>
 
 
-        {/* Motivos de Recusa */}
-        {recusaramPeriodo > 0 && (
-          <div className="page-section">
-            <ChartCard title="Motivos de Recusa" subtitle={`Base: ${recusaramPeriodo} recusas`}>
-              <BarHorizontal data={Object.entries(motivosRecusa).map(([name, value]) => ({ name, value }))} />
-            </ChartCard>
-          </div>
-        )}
-
-        {/* Bairros */}
-        {bairrosOrdenados.length > 0 && (
-          <div className="page-section">
-            <ChartCard title="Top Bairros" subtitle={`Base: ${pesquisasFiltradas.length} pesquisas`}>
-              <BarHorizontal data={bairrosOrdenados.map(([name, value]) => ({ name, value }))} />
-            </ChartCard>
-          </div>
-        )}
 
         {/* Produtividade dos Pesquisadores */}
         <div className="page-section">
@@ -417,19 +343,47 @@ export const DashboardPage = ({
           >
             {produtividade && produtividade.length > 0 ? (
               <div style={{ marginTop: '1rem' }}>
-                {produtividade.map((item) => (
+                {produtividade.map((item) => {
+                  // Calcular estatísticas de aceite/recusa/ausente para este pesquisador
+                  // Usar 'pesquisas' (todas do período) em vez de 'pesquisasFiltradas' (que pode ter filtros adicionais)
+                  const pesquisasDoPesquisador = pesquisas.filter(p => p.entrevistador === item.entrevistador);
+                  const aceitas = pesquisasDoPesquisador.filter(p => p.aceite_participacao === 'true' || p.aceite_participacao === true).length;
+                  const recusadas = pesquisasDoPesquisador.filter(p => p.aceite_participacao === 'false' || p.aceite_participacao === false).length;
+                  const ausentes = pesquisasDoPesquisador.filter(p => p.aceite_participacao === 'ausente').length;
+                  const totalFiltrado = aceitas + recusadas + ausentes;
+                  
+                  // Não mostrar pesquisadores com 0 entrevistas no período filtrado
+                  if (totalFiltrado === 0) return null;
+                  
+                  return (
                   <div key={item.entrevistador} style={{ marginBottom: '2rem' }}>
                     <h4 style={{ 
                       fontSize: '16px', 
                       fontWeight: '600', 
                       color: '#1f2937',
-                      marginBottom: '0.75rem'
+                      marginBottom: '0.5rem'
                     }}>
-                      {(() => {
-                        const cont = getContagemEntrevistador(item.entrevistador);
-                        return `${item.entrevistador} (${item.total_entrevistas} entrevistas · ${cont.aceitas} aceitas · ${cont.ausentes} ausentes)`;
-                      })()}
+                      {item.entrevistador} ({totalFiltrado} entrevistas)
                     </h4>
+                    
+                    {/* Estatísticas de Aceite/Recusa/Ausente */}
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '1rem', 
+                      marginBottom: '1rem',
+                      fontSize: '13px',
+                      color: '#6b7280'
+                    }}>
+                      <span>
+                        <strong style={{ color: '#1a9bff' }}>{aceitas}</strong> aceitas
+                      </span>
+                      <span>
+                        <strong style={{ color: '#FF7B7B' }}>{recusadas}</strong> recusadas
+                      </span>
+                      <span>
+                        <strong style={{ color: '#64748B' }}>{ausentes}</strong> ausentes
+                      </span>
+                    </div>
                     
                     {/* Duração Média */}
                     <div style={{ marginBottom: '1rem' }}>
@@ -507,7 +461,8 @@ export const DashboardPage = ({
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
                 
                 <div style={{ 
                   marginTop: '1.5rem', 
