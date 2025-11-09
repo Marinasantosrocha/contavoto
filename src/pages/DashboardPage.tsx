@@ -65,13 +65,12 @@ export const DashboardPage = ({
   const taxaRecusa = totalAbordagens > 0 ? (recusaramPeriodo / totalAbordagens) * 100 : 0;
   const taxaAusente = totalAbordagens > 0 ? (ausentesPeriodo / totalAbordagens) * 100 : 0;
 
-  // Agrupar recusas por motivo
-  const motivosRecusa: { [key: string]: number } = {};
-  pesquisasFiltradas
-    .filter(p => p.motivo_recusa)
-    .forEach(p => {
-      motivosRecusa[p.motivo_recusa!] = (motivosRecusa[p.motivo_recusa!] || 0) + 1;
-    });
+  // Calcular distribuição de autorização de contato
+  const autorizouContato = pesquisasFiltradas.filter(p => p.autorizacao_contato === 'Sim, autorizo').length;
+  const naoAutorizouContato = pesquisasFiltradas.filter(p => p.autorizacao_contato === 'Não autorizo').length;
+  const totalRespostasContato = autorizouContato + naoAutorizouContato;
+  const taxaAutorizacao = totalRespostasContato > 0 ? (autorizouContato / totalRespostasContato) * 100 : 0;
+  const taxaNaoAutorizacao = totalRespostasContato > 0 ? (naoAutorizouContato / totalRespostasContato) * 100 : 0;
 
 
   // Opções de filtros adicionais
@@ -192,7 +191,7 @@ export const DashboardPage = ({
 
         {/* Taxa de Aceite */}
         <div className="page-section">
-          <ChartCard title="Taxa de Aceite" subtitle={`Base: ${totalAbordagens} abordagens no período`}>
+          <ChartCard title="Taxa de Aceite" subtitle={`${totalAbordagens} abordagens no período`}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 360px) 1fr', gap: '1.25rem', alignItems: 'center' }}>
               <DonutChart 
                 data={[
@@ -238,16 +237,53 @@ export const DashboardPage = ({
                     </div>
                   </div>
                 </div>
-                <div className="taxa-summary">
-                  <div className="taxa-summary-item">
-                    <span className="taxa-summary-label">Total de Abordagens:</span>
-                    <span className="taxa-summary-value">{totalAbordagens}</span>
-                  </div>
-                </div>
               </div>
             </div>
           </ChartCard>
         </div>
+
+        {/* Autorização de Contato */}
+        {totalRespostasContato > 0 && (
+          <div className="page-section">
+            <ChartCard title="Autorização de Contato" subtitle={`${totalRespostasContato} respostas no período`}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 360px) 1fr', gap: '1.25rem', alignItems: 'center' }}>
+                <DonutChart 
+                  data={[
+                    { name: 'Sim, autorizo', value: autorizouContato }, 
+                    { name: 'Não autorizo', value: naoAutorizouContato }
+                  ]}
+                  colors={['#1a9bff', '#FF7B7B']}
+                />
+                <div className="taxa-container">
+                  <div className="taxa-chart">
+                    <div className="taxa-bar-container">
+                      <div className="taxa-bar-label">
+                        <span>Sim, autorizo</span>
+                        <span className="taxa-percentage">{taxaAutorizacao.toFixed(1)}%</span>
+                      </div>
+                      <div className="taxa-bar">
+                        <div className="taxa-bar-fill success" style={{ width: `${taxaAutorizacao}%` }}>
+                          {autorizouContato}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="taxa-bar-container">
+                      <div className="taxa-bar-label">
+                        <span>Não autorizo</span>
+                        <span className="taxa-percentage danger">{taxaNaoAutorizacao.toFixed(1)}%</span>
+                      </div>
+                      <div className="taxa-bar">
+                        <div className="taxa-bar-fill danger" style={{ width: `${taxaNaoAutorizacao}%` }}>
+                          {naoAutorizouContato}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ChartCard>
+          </div>
+        )}
 
         {/* Opiniões por Tema (RFB) */}
         <div className="page-section">
@@ -292,81 +328,11 @@ export const DashboardPage = ({
                   />
                 </div>
 
-                {/* 2) Indicadores Binários - barras empilhadas 100% */}
-                <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Indicadores de Aprovação</h4>
-                  </div>
-                  <Stacked100BarList
-                    rows={RFB_FIELDS.filter(f => f.type === 'binary').map(f => ({
-                      key: f.key,
-                      label: f.label,
-                      dist: rfbAgg.distribuicoes[f.key] || {},
-                      order: f.order,
-                    }))}
-                    onSegmentClick={(field, opt) => handleSliceClick(field, opt)}
-                  />
-                </div>
-
-                {/* 3) Perfil: Faixa etária e Tempo de moradia - donuts por campo */}
-                <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Perfil dos Entrevistados</h4>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-                    {RFB_FIELDS.filter(f => f.type === 'ordinal').map(f => {
-                      const dist = rfbAgg.distribuicoes[f.key] || {};
-                      const entries = orderEntries(Object.entries(dist), f.key);
-                      if (entries.length === 0) return null;
-                      const data = entries.map(([name, value]) => ({ name, value }));
-                      return (
-                        <div key={f.key} className="card" style={{ padding: '0.5rem' }}>
-                          <div className="card-header" style={{ padding: '0.25rem 0.5rem' }}>
-                            <h5 className="card-title" style={{ fontSize: '0.95rem' }}>{f.label}</h5>
-                          </div>
-                          <DonutChart data={data} height={240} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 4) Principais Temas (Top 8) - barras horizontais em % */}
-                <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Principais Temas</h4>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-                    {(['problema_cidade','area_avanco','prioridade_deputado'] as const).map((campo) => {
-                      const dist = rfbAgg.distribuicoes[campo] || {};
-                      const entries = Object.entries(dist).filter(([,v]) => v > 0);
-                      if (entries.length === 0) return null;
-                      const data = entries.map(([name, value]) => ({ name, value }));
-                      return (
-                        <div key={campo} className="card" style={{ padding: '0.25rem 0.5rem' }}>
-                          <div className="card-header" style={{ padding: '0.25rem 0.5rem' }}>
-                            <h5 className="card-title" style={{ fontSize: '0.95rem' }}>{RFB_FIELDS.find(f => f.key === campo)?.label}</h5>
-                          </div>
-                          <BarHorizontal data={data} maxBars={8} normalizePercent />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             )}
           </ChartCard>
         </div>
 
-
-        {/* Motivos de Recusa */}
-        {recusaramPeriodo > 0 && (
-          <div className="page-section">
-            <ChartCard title="Motivos de Recusa" subtitle={`Base: ${recusaramPeriodo} recusas`}>
-              <BarHorizontal data={Object.entries(motivosRecusa).map(([name, value]) => ({ name, value }))} />
-            </ChartCard>
-          </div>
-        )}
 
 
         {/* Produtividade dos Pesquisadores */}

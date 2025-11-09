@@ -14,7 +14,7 @@ export function ChartCard({ title, subtitle, right, children }: ChartCardProps) 
         <div>
           <h3 className="card-title">{title}</h3>
           {subtitle && (
-            <div style={{ fontSize: '0.875rem', color: '#6C757D', marginTop: 4 }}>{subtitle}</div>
+            <div style={{ fontSize: '0.875rem', color: '#4B5563', marginTop: 4 }}>{subtitle}</div>
           )}
         </div>
         {right && <div style={{ marginLeft: 'auto' }}>{right}</div>}

@@ -39,8 +39,8 @@ BEGIN
       COUNT(*) FILTER (WHERE aceite_participacao IN ('false', 'FALSE', 'f', 'F')) as recusadas,
       COUNT(*) FILTER (WHERE aceite_participacao = 'ausente') as ausentes,
       COUNT(*) as total_entrevistas,
-      -- Métricas de produtividade
-      ROUND(AVG(EXTRACT(EPOCH FROM (finalizada_em - iniciada_em)) / 60)::numeric, 1) as duracao_media_minutos,
+      -- Métricas de produtividade (apenas entrevistas aceitas)
+      ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM (finalizada_em - iniciada_em)) / 60) FILTER (WHERE aceite_participacao IN ('true', 'TRUE', 't', 'T')), 0)::numeric, 1) as duracao_media_minutos,
       ROUND(AVG(
         EXTRACT(EPOCH FROM (
           iniciada_em - LAG(finalizada_em) OVER (PARTITION BY usuario_id ORDER BY iniciada_em)
