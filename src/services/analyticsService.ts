@@ -5,6 +5,7 @@ export type PeriodoFiltro = 'hoje' | 'semana' | 'mes' | 'todos';
 export interface RfbFilters {
   periodo?: PeriodoFiltro;
   pesquisadorId?: number | null;
+  pesquisadorNome?: string | null; // Adicionar filtro por nome
   formularioUuid?: string | null;
   cidade?: string | null;
   bairro?: string | null;
@@ -104,6 +105,10 @@ export async function fetchRfbAggregations(filters: RfbFilters): Promise<RfbAggr
     if (filters.pesquisadorId) {
       query = query.eq('pesquisas.usuario_id', filters.pesquisadorId);
     }
+    
+    if (filters.pesquisadorNome) {
+      query = query.eq('pesquisas.entrevistador', filters.pesquisadorNome);
+    }
 
     if (filters.formularioUuid) {
       query = query.eq('pesquisas.formulario_id', filters.formularioUuid);
@@ -137,6 +142,7 @@ export async function fetchRfbAggregations(filters: RfbFilters): Promise<RfbAggr
     let q = supabase.from('pesquisas').select('id').neq('status', 'cancelada');
     if (bounds.gte) q = q.gte('iniciada_em', bounds.gte);
     if (filters.pesquisadorId) q = q.eq('usuario_id', filters.pesquisadorId);
+    if (filters.pesquisadorNome) q = q.eq('entrevistador', filters.pesquisadorNome);
     if (filters.formularioUuid) q = q.eq('formulario_id', filters.formularioUuid);
     if (filters.cidade) q = q.ilike('cidade', `%${filters.cidade}%`);
     if (filters.bairro) q = q.ilike('bairro', `%${filters.bairro}%`);

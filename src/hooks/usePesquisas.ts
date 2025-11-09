@@ -202,7 +202,7 @@ export const useCidades = () => {
 // Hook para buscar pesquisas do Supabase (não do IndexedDB)
 export const usePesquisasSupabase = (filtros?: {
   periodo?: 'hoje' | 'semana' | 'mes' | 'todos';
-  pesquisadorId?: number | null;
+  pesquisadorNome?: string | null;
   cidade?: string | null;
 }) => {
   return useQuery({
@@ -235,9 +235,9 @@ export const usePesquisasSupabase = (filtros?: {
         query = query.gte('iniciada_em', dataInicio.toISOString());
       }
       
-      // Filtro de pesquisador
-      if (filtros?.pesquisadorId) {
-        query = query.eq('usuario_id', filtros.pesquisadorId);
+      // Filtro de pesquisador (por nome, não por ID)
+      if (filtros?.pesquisadorNome) {
+        query = query.eq('entrevistador', filtros.pesquisadorNome);
       }
       
       // Filtro de cidade

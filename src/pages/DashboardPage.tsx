@@ -24,7 +24,7 @@ export const DashboardPage = ({
   onNavigatePesquisas
 }: DashboardPageProps) => {
   const [periodoSelecionado, setPeriodoSelecionado] = useState<Periodo>('todos');
-  const [pesquisadorSelecionado, setPesquisadorSelecionado] = useState<number | null>(null);
+  const [pesquisadorSelecionado, setPesquisadorSelecionado] = useState<string | null>(null); // Armazena o NOME, não o ID
   const [formularioSelecionado, setFormularioSelecionado] = useState<string | null>(null);
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<Record<string, string | null>>({});
@@ -42,7 +42,14 @@ export const DashboardPage = ({
   // Buscar pesquisas direto do Supabase com filtros aplicados
   const { data: pesquisas = [] } = usePesquisasSupabase({
     periodo: periodoSelecionado,
-    pesquisadorId: filtroUsuario,
+    pesquisadorNome: pesquisadorSelecionado, // Passa o NOME
+    cidade: cidadeSelecionada,
+  });
+  
+  // Buscar pesquisas filtradas por período e cidade (sem filtro de pesquisador) para montar o dropdown
+  const { data: pesquisasParaDropdown = [] } = usePesquisasSupabase({
+    periodo: periodoSelecionado,
+    pesquisadorNome: null, // Sem filtro de pesquisador
     cidade: cidadeSelecionada,
   });
   
@@ -89,10 +96,30 @@ export const DashboardPage = ({
     ];
   }, [cidadesSupabase]);
 
+  // Filtrar pesquisadores usando os nomes únicos das pesquisas
+  const opcoesPesquisadores = useMemo(() => {
+    // Se não há pesquisas com os filtros aplicados, não mostrar nenhum pesquisador
+    if (!pesquisasParaDropdown || pesquisasParaDropdown.length === 0) {
+      return [];
+    }
+    
+    // Extrair nomes únicos de entrevistadores das pesquisas
+    const nomesUnicos = new Set(
+      pesquisasParaDropdown
+        .map(p => p.entrevistador)
+        .filter((nome): nome is string => !!nome)
+    );
+    
+    // Converter para array de opções (value = nome, label = nome)
+    return Array.from(nomesUnicos)
+      .map(nome => ({ value: nome, label: nome }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [pesquisasParaDropdown]);
+
   // Buscar agregações da RFB (respostas normalizadas) para perguntas de múltipla escolha
   const { data: rfbAgg } = useRfbAnalytics({
     periodo: periodoSelecionado,
-    pesquisadorId: filtroUsuario || null,
+    pesquisadorNome: pesquisadorSelecionado, // Passa o nome do pesquisador
     formularioUuid: formularioSelecionado,
     cidade: cidadeSelecionada,
     categorySelections: opcoesSelecionadas,
@@ -178,12 +205,10 @@ export const DashboardPage = ({
             <div style={{ marginTop: '1rem' }}>
               <SimpleSelect
                 label="Filtrar por Pesquisador"
-                options={[
-                  { value: '', label: 'Todos os Pesquisadores' },
-                  ...pesquisadores.map(p => ({ value: p.id, label: p.nome }))
-                ]}
-                value={pesquisadorSelecionado || ''}
-                onChange={(value) => setPesquisadorSelecionado(value ? Number(value) : null)}
+                options={opcoesPesquisadores}
+                value={pesquisadorSelecionado ?? ''}
+                placeholder="Todos os Pesquisadores"
+                onChange={(value) => setPesquisadorSelecionado(value ? String(value) : null)}
               />
             </div>
           )}
