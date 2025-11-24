@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { usePesquisas, useDeletarPesquisa, usePesquisasTabela } from '../hooks/usePesquisas';
+import { usePesquisas, useDeletarPesquisa, usePesquisasTabelaTodas } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import { Sidebar } from '../components/Sidebar';
+import { SimpleSelect } from '../components/SimpleSelect';
 import '../styles/tabela-pesquisas.css';
 
 interface ListaPesquisasPageProps {
@@ -26,8 +27,106 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   const [adminLimit] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState<number>(0);
   
-  // Paginação para tabela
-  const { data: pesquisasTabela = [], isLoading: loadingTabela } = usePesquisasTabela(adminLimit, currentPage * adminLimit);
+  // Filtros da tabela (Admin)
+  const [periodoSelecionado, setPeriodoSelecionado] = useState<string>('todos');
+  const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
+  const [entrevistadoraSelecionada, setEntrevistadoraSelecionada] = useState<string | null>(null);
+  
+  // Buscar TODAS as pesquisas aceitas
+  const { data: todasPesquisasTabela = [], isLoading: loadingTabela } = usePesquisasTabelaTodas();
+  
+  // Log quando os dados carregarem
+  useEffect(() => {
+    if (todasPesquisasTabela.length > 0) {
+      console.log('🎉 Dados carregados do React Query:', todasPesquisasTabela.length, 'pesquisas');
+    }
+  }, [todasPesquisasTabela]);
+  
+  // Aplicar filtros no front-end
+  const pesquisasFiltradas = useMemo(() => {
+    console.log('🔍 Aplicando filtros...');
+    console.log('📊 Total de pesquisas:', todasPesquisasTabela.length);
+    console.log('📅 Período:', periodoSelecionado);
+    console.log('🏙️ Cidade:', cidadeSelecionada);
+    console.log('👤 Entrevistadora:', entrevistadoraSelecionada);
+    
+    let filtered = [...todasPesquisasTabela];
+    
+    // Filtro de período
+    if (periodoSelecionado !== 'todos') {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      
+      let dataInicio: Date;
+      if (periodoSelecionado === 'hoje') {
+        dataInicio = hoje;
+      } else if (periodoSelecionado === 'semana') {
+        dataInicio = new Date(hoje);
+        dataInicio.setDate(hoje.getDate() - 7);
+      } else { // mes
+        dataInicio = new Date(hoje);
+        dataInicio.setMonth(hoje.getMonth() - 1);
+      }
+      
+      const antes = filtered.length;
+      filtered = filtered.filter(p => {
+        const dataPesquisa = new Date(p.data_pesquisa);
+        return dataPesquisa >= dataInicio;
+      });
+      console.log(`  ⏰ Filtro período: ${antes} → ${filtered.length}`);
+    }
+    
+    // Filtro de cidade
+    if (cidadeSelecionada) {
+      const antes = filtered.length;
+      filtered = filtered.filter(p => p.cidade === cidadeSelecionada);
+      console.log(`  🏙️ Filtro cidade: ${antes} → ${filtered.length}`);
+    }
+    
+    // Filtro de entrevistadora
+    if (entrevistadoraSelecionada) {
+      const antes = filtered.length;
+      filtered = filtered.filter(p => p.entrevistadora === entrevistadoraSelecionada);
+      console.log(`  👤 Filtro entrevistadora: ${antes} → ${filtered.length}`);
+    }
+    
+    console.log('✅ Total filtrado:', filtered.length);
+    return filtered;
+  }, [todasPesquisasTabela, periodoSelecionado, cidadeSelecionada, entrevistadoraSelecionada]);
+  
+  // Extrair opções para os filtros
+  const opcoesCidades = useMemo(() => {
+    const cidades = [...new Set(todasPesquisasTabela.map(p => p.cidade).filter(Boolean))].sort();
+    return cidades;
+  }, [todasPesquisasTabela]);
+  
+  const opcoesEntrevistadoras = useMemo(() => {
+    const entrevistadoras = [...new Set(todasPesquisasTabela.map(p => p.entrevistadora).filter(Boolean))].sort();
+    return entrevistadoras;
+  }, [todasPesquisasTabela]);
+  
+  // Aplicar paginação nas pesquisas filtradas
+  const pesquisasTabela = useMemo(() => {
+    const inicio = currentPage * adminLimit;
+    const fim = inicio + adminLimit;
+    const paginadas = pesquisasFiltradas.slice(inicio, fim);
+    
+    console.log('📄 Paginação:');
+    console.log('  Página atual:', currentPage + 1);
+    console.log('  Registros por página:', adminLimit);
+    console.log('  Início:', inicio);
+    console.log('  Fim:', fim);
+    console.log('  Total filtrado:', pesquisasFiltradas.length);
+    console.log('  Exibindo:', paginadas.length);
+    console.log('  Total de páginas:', Math.ceil(pesquisasFiltradas.length / adminLimit));
+    
+    return paginadas;
+  }, [pesquisasFiltradas, currentPage, adminLimit]);
+  
+  // Resetar paginação quando os filtros mudarem
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [periodoSelecionado, cidadeSelecionada, entrevistadoraSelecionada]);
 
   // React Query hooks
   const filtroObj = filtro === 'todas' ? undefined : { status: filtro };
@@ -247,12 +346,54 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
           </header>
 
           <main className="main-content" style={{ padding: '1.5rem 2rem' }}>
+            {/* Filtros */}
+            <div className="dashboard-filters-row" style={{ marginBottom: '1.5rem' }}>
+              <SimpleSelect
+                label="Período de Análise"
+                options={[
+                  { value: 'hoje', label: 'Hoje' },
+                  { value: 'semana', label: 'Últimos 7 dias' },
+                  { value: 'mes', label: 'Últimos 30 dias' },
+                  { value: 'todos', label: 'Todos os períodos' }
+                ]}
+                value={periodoSelecionado}
+                onChange={(value) => {
+                  setPeriodoSelecionado(value as string);
+                  setCidadeSelecionada(null);
+                  setEntrevistadoraSelecionada(null);
+                }}
+              />
+
+              <SimpleSelect
+                label="Cidade"
+                options={[
+                  { value: '', label: 'Todas as Cidades' },
+                  ...opcoesCidades.map(c => ({ value: c, label: c }))
+                ]}
+                value={cidadeSelecionada || ''}
+                onChange={(value) => {
+                  setCidadeSelecionada((value as string) || null);
+                  setEntrevistadoraSelecionada(null);
+                }}
+              />
+
+              <SimpleSelect
+                label="Entrevistadora"
+                options={[
+                  { value: '', label: 'Todas as Entrevistadoras' },
+                  ...opcoesEntrevistadoras.map(e => ({ value: e, label: e }))
+                ]}
+                value={entrevistadoraSelecionada || ''}
+                onChange={(value) => setEntrevistadoraSelecionada((value as string) || null)}
+              />
+            </div>
+
             {loadingTabela ? (
               <div className="spinner-center"><div className="spinner" /></div>
             ) : pesquisasTabela.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">📋</div>
-                <p>Nenhuma pesquisa aceita encontrada</p>
+                <p>Nenhuma pesquisa aceita encontrada com os filtros selecionados</p>
               </div>
             ) : (
               <>
@@ -266,7 +407,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                         <th>Entrevistadora</th>
                         <th>Nome</th>
                         <th>Aniversário</th>
-                        <th>Autorização Contato</th>
+                        <th style={{ textAlign: 'center' }}>Aut. Contato</th>
                         <th>WhatsApp</th>
                       </tr>
                     </thead>
@@ -282,7 +423,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                             <td>{p.entrevistadora || '-'}</td>
                             <td>{p.nome_entrevistado || '-'}</td>
                             <td>{formatDataNascimento(p.data_nascimento)}</td>
-                            <td>
+                            <td style={{ textAlign: 'center' }}>
                               {autorizacao.class ? (
                                 <span className={`autorizacao-badge ${autorizacao.class}`}>
                                   {autorizacao.text}
@@ -299,27 +440,58 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                   </table>
                 </div>
 
-                <div className="pagination-controls">
-                  <div className="pagination-info">
-                    Mostrando {currentPage * adminLimit + 1} - {currentPage * adminLimit + pesquisasTabela.length} pesquisas
+                <div className="pagination-controls" style={{ 
+                  background: 'white', 
+                  borderTop: '2px solid #1a9bff',
+                  padding: '20px'
+                }}>
+                  <div className="pagination-info" style={{ 
+                    fontSize: '15px', 
+                    fontWeight: '600',
+                    color: '#1f2937' 
+                  }}>
+                    📄 Mostrando registros {currentPage * adminLimit + 1} - {Math.min(currentPage * adminLimit + pesquisasTabela.length, pesquisasFiltradas.length)} de {pesquisasFiltradas.length} pesquisas
                   </div>
                   <div className="pagination-buttons">
                     <button 
                       className="pagination-btn" 
-                      onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                      onClick={() => {
+                        console.log('⬅️ Página anterior');
+                        setCurrentPage(p => Math.max(0, p - 1));
+                      }}
                       disabled={currentPage === 0}
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        padding: '10px 20px'
+                      }}
                     >
-                      Anterior
+                      ⬅️ Anterior
                     </button>
-                    <span style={{ padding: '8px 16px', color: '#6b7280' }}>
-                      Página {currentPage + 1}
+                    <span style={{ 
+                      padding: '10px 20px', 
+                      color: '#1a9bff',
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      background: '#e0f2fe',
+                      borderRadius: '6px'
+                    }}>
+                      Página {currentPage + 1} / {Math.ceil(pesquisasFiltradas.length / adminLimit)}
                     </span>
                     <button 
                       className="pagination-btn" 
-                      onClick={() => setCurrentPage(p => p + 1)}
-                      disabled={pesquisasTabela.length < adminLimit}
+                      onClick={() => {
+                        console.log('➡️ Próxima página');
+                        setCurrentPage(p => p + 1);
+                      }}
+                      disabled={(currentPage + 1) * adminLimit >= pesquisasFiltradas.length}
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        padding: '10px 20px'
+                      }}
                     >
-                      Próxima
+                      Próxima ➡️
                     </button>
                   </div>
                 </div>

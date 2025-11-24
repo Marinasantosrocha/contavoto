@@ -1,14 +1,16 @@
 -- ============================================
 -- FUNÇÃO: Buscar todas as pesquisas para tabela
 -- ============================================
--- Retorna todos os dados necessários para a tabela de pesquisas
+-- Retorna TODOS os dados (SEM LIMITE) para a tabela de pesquisas
+-- Filtros e paginação serão aplicados no front-end
 
-DROP FUNCTION IF EXISTS buscar_todas_pesquisas_tabela(integer, integer);
+-- IMPORTANTE: Remover TODAS as versões antigas da função
+DROP FUNCTION IF EXISTS buscar_todas_pesquisas_tabela() CASCADE;
+DROP FUNCTION IF EXISTS buscar_todas_pesquisas_tabela(integer, integer) CASCADE;
+DROP FUNCTION IF EXISTS buscar_todas_pesquisas_tabela(text, text, text, integer, integer) CASCADE;
+DROP FUNCTION IF EXISTS buscar_pesquisas_tabela_filtros(text, text, text, integer, integer) CASCADE;
 
-CREATE OR REPLACE FUNCTION buscar_todas_pesquisas_tabela(
-  p_limit integer DEFAULT 100,
-  p_offset integer DEFAULT 0
-)
+CREATE OR REPLACE FUNCTION buscar_todas_pesquisas_tabela()
 RETURNS TABLE (
   id uuid,
   data_pesquisa timestamptz,
@@ -21,6 +23,7 @@ RETURNS TABLE (
   whatsapp text
 ) 
 LANGUAGE sql
+STABLE
 AS $$
   SELECT 
     p.id,
@@ -35,18 +38,19 @@ AS $$
     p.whatsapp
   FROM pesquisas p
   WHERE p.aceite_participacao = 'true'  -- Apenas pesquisas aceitas (tipo TEXT)
-  ORDER BY p.iniciada_em DESC
-  LIMIT p_limit
-  OFFSET p_offset;
+  ORDER BY p.iniciada_em DESC;
 $$;
 
 -- Conceder permissões
-GRANT EXECUTE ON FUNCTION buscar_todas_pesquisas_tabela(integer, integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION buscar_todas_pesquisas_tabela(integer, integer) TO anon;
+GRANT EXECUTE ON FUNCTION buscar_todas_pesquisas_tabela() TO authenticated;
+GRANT EXECUTE ON FUNCTION buscar_todas_pesquisas_tabela() TO anon;
 
--- Testar - primeira página
-SELECT * FROM buscar_todas_pesquisas_tabela(100, 0);
+-- Testar - buscar todas as pesquisas aceitas
+SELECT COUNT(*) as total_retornado FROM buscar_todas_pesquisas_tabela();
 
--- Ver total de registros na tabela
-SELECT COUNT(*) as total_pesquisas FROM pesquisas;
+-- Ver as primeiras 10 pesquisas
+SELECT * FROM buscar_todas_pesquisas_tabela() LIMIT 10;
+
+-- Ver total de pesquisas aceitas na tabela
+SELECT COUNT(*) as total_pesquisas_aceitas FROM pesquisas WHERE aceite_participacao = 'true';
 

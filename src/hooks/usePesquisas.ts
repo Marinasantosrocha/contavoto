@@ -256,26 +256,24 @@ export const usePesquisasSupabase = () => {
   });
 };
 
-// Hook para buscar todas as pesquisas para exibir em tabela (paginado)
-export const usePesquisasTabela = (limit: number = 100, offset: number = 0) => {
+// Hook para buscar TODAS as pesquisas aceitas para tabela (filtros aplicados no frontend)
+export const usePesquisasTabelaTodas = () => {
   return useQuery({
-    queryKey: ['pesquisas-tabela', limit, offset],
+    queryKey: ['pesquisas-tabela-todas'],
     queryFn: async () => {
       const { supabase } = await import('../services/supabaseClient');
       
-      const { data, error } = await supabase.rpc('buscar_todas_pesquisas_tabela', {
-        p_limit: limit,
-        p_offset: offset
-      });
+      const { data, error } = await supabase.rpc('buscar_todas_pesquisas_tabela');
       
       if (error) {
         console.error('❌ Erro ao buscar pesquisas para tabela:', error);
         throw error;
       }
       
+      console.log('✅ Total de pesquisas aceitas carregadas:', data?.length);
       return data || [];
     },
-    staleTime: 1000 * 60 * 2, // 2 minutos
+    staleTime: 1000 * 60 * 5, // 5 minutos - cache mais longo pois busca tudo
   });
 };
 
