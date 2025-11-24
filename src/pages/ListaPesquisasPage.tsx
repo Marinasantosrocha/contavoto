@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { usePesquisas, useDeletarPesquisa } from '../hooks/usePesquisas';
+import { usePesquisas, useDeletarPesquisa, usePesquisasTabela } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import { Sidebar } from '../components/Sidebar';
-import { supabase } from '../services/supabaseClient';
-import { CustomSelect } from '../components/CustomSelect';
+import { SimpleSelect } from '../components/SimpleSelect';
+import '../styles/tabela-pesquisas.css';
+import '../styles/dashboard.css';
 
 interface ListaPesquisasPageProps {
   onVoltar: () => void;
@@ -23,14 +24,21 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   // const [audioProgress, setAudioProgress] = useState<Record<number, number>>({});
   const [playingId, setPlayingId] = useState<number | null>(null);
   const audioMapRef = useMemo(() => new Map<number, HTMLAudioElement>(), []);
-  // Admin (Super) - estados
-  const [adminEntrevistadorOptions, setAdminEntrevistadorOptions] = useState<Array<{value: string, label: string}>>([]);
-  const [adminEntrevistadorSel, setAdminEntrevistadorSel] = useState<string>('all');
-  const [adminPesquisas, setAdminPesquisas] = useState<any[]>([]);
-  const [adminLoading, setAdminLoading] = useState<boolean>(false);
-  const [adminMapForm, setAdminMapForm] = useState<Record<string, any>>({});
-  const [adminMapResp, setAdminMapResp] = useState<Record<string, any>>({});
-  const [adminLimit, setAdminLimit] = useState<number>(20);
+  // Paginação e filtros da tabela (Admin)
+  const [adminLimit] = useState<number>(100);
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [periodoTabela, setPeriodoTabela] = useState<string>('todos');
+  const [cidadeTabela, setCidadeTabela] = useState<string | null>(null);
+  const [entrevistadorTabela, setEntrevistadorTabela] = useState<string | null>(null);
+  
+  // Paginação para tabela com filtros
+  const { data: pesquisasTabela = [], isLoading: loadingTabela } = usePesquisasTabela(
+    periodoTabela,
+    cidadeTabela,
+    entrevistadorTabela,
+    adminLimit,
+    currentPage * adminLimit
+  );
 
   // React Query hooks
   const filtroObj = filtro === 'todas' ? undefined : { status: filtro };
@@ -200,279 +208,204 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     return badges[status as keyof typeof badges] || badges.em_andamento;
   };
 
-  // Carregar opções de entrevistadores (somente admin)
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    let cancel = false;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('pesquisas')
-          .select('entrevistador')
-          .not('entrevistador', 'is', null)
-          .not('audio_url', 'is', null); // Apenas pesquisas com áudio
-        
-        if (error) throw error;
-        if (cancel) return;
-        
-        // Extrair entrevistadores únicos
-        const entrevistadoresUnicos = [...new Set((data || []).map((p: any) => p.entrevistador))].sort();
-        const opts = [
-          { value: 'all', label: 'Todos os entrevistadores' }, 
-          ...entrevistadoresUnicos.map((e: string) => ({ value: e, label: e }))
-        ];
-        setAdminEntrevistadorOptions(opts);
-      } catch (e) {
-        setAdminEntrevistadorOptions([{ value: 'all', label: 'Todos os entrevistadores' }]);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [isSuperAdmin]);
+  // Formatadores para a tabela
+  const formatAutorizacao = (autorizacao: string | null) => {
+    if (!autorizacao) return { text: '-', class: '' };
+    if (autorizacao.toLowerCase().includes('sim')) return { text: 'Sim', class: 'sim' };
+    if (autorizacao.toLowerCase().includes('não') || autorizacao.toLowerCase().includes('nao')) {
+      return { text: 'Não', class: 'nao' };
+    }
+    return { text: '-', class: '' };
+  };
 
-  // Carregar pesquisas do servidor + mapear respostas e formulários
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    let cancel = false;
-    (async () => {
-      setAdminLoading(true);
-      try {
-        // 1) Pesquisas (filtradas por entrevistador e apenas com áudio)
-        let query = supabase
-          .from('pesquisas')
-          .select('id, formulario_id, formulario_nome, endereco, bairro, cidade, entrevistador, iniciada_em, status, audio_url, audio_duracao, respostas_ia, observacoes_ia')
-          .not('audio_url', 'is', null) // Apenas pesquisas com áudio
-          .order('iniciada_em', { ascending: false })
-          .range(0, Math.max(0, adminLimit - 1));
-        if (adminEntrevistadorSel !== 'all') {
-          query = query.eq('entrevistador', adminEntrevistadorSel);
-        }
-        const { data: pesqData, error: pesqErr } = await query;
-        if (pesqErr) throw pesqErr;
+  const formatDataNascimento = (data: string | null) => {
+    if (!data) return '-';
+    return data;
+  };
 
-        const pesquisasList = pesqData || [];
-        const ids = pesquisasList.map((p: any) => p.id);
-        const formIds = [...new Set(pesquisasList.map((p: any) => p.formulario_id).filter(Boolean))];
+  const formatPrimeiroNome = (nomeCompleto: string | null) => {
+    if (!nomeCompleto) return '-';
+    return nomeCompleto.split(' ')[0];
+  };
 
-        // 2) Respostas normalizadas
-        let respostasMap: Record<string, any> = {};
-        if (ids.length) {
-          const { data: respData, error: respErr } = await supabase
-            .from('respostas_formulario_buritizeiro')
-            .select('*')
-            .in('pesquisa_id', ids);
-          if (respErr) throw respErr;
-          for (const r of respData || []) respostasMap[r.pesquisa_id] = r;
-        }
+  // Opções de filtro para a tabela (extraídas das pesquisas)
+  const opcoesCidadesTabela = useMemo(() => {
+    const cidades = new Set<string>();
+    pesquisasTabela.forEach(p => {
+      if (p.cidade) cidades.add(p.cidade);
+    });
+    const cidadesArray = Array.from(cidades).sort((a, b) => a.localeCompare(b));
+    return [
+      { value: '', label: 'Todas as Cidades' },
+      ...cidadesArray.map(c => ({ value: c, label: c }))
+    ];
+  }, [pesquisasTabela]);
 
-        // 3) Formularios (nome já vem junto, mas buscamos metadados extras se precisar)
-        let formMap: Record<string, any> = {};
-        if (formIds.length) {
-          const { data: formsData, error: formsErr } = await supabase
-            .from('formularios')
-            .select('id,nome,descricao,pre_candidato,telefone_contato')
-            .in('id', formIds);
-          if (formsErr) throw formsErr;
-          for (const f of formsData || []) formMap[f.id] = f;
-        }
+  const opcoesEntrevistadorasTabela = useMemo(() => {
+    const entrevistadores = new Set<string>();
+    pesquisasTabela.forEach(p => {
+      if (p.entrevistador) entrevistadores.add(p.entrevistador);
+    });
+    const entrevistadoresArray = Array.from(entrevistadores).sort((a, b) => a.localeCompare(b));
+    return [
+      { value: '', label: 'Todas as Entrevistadoras' },
+      ...entrevistadoresArray.map(e => ({ value: e, label: e }))
+    ];
+  }, [pesquisasTabela]);
 
-        if (!cancel) {
-          setAdminPesquisas(pesquisasList);
-          setAdminMapForm(formMap);
-          setAdminMapResp(respostasMap);
-        }
-      } catch (e) {
-        if (!cancel) {
-          setAdminPesquisas([]);
-        }
-      } finally {
-        if (!cancel) setAdminLoading(false);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [isSuperAdmin, adminEntrevistadorSel, adminLimit]);
-
-  // Resetar limite ao trocar o filtro
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    setAdminLimit(20);
-  }, [adminEntrevistadorSel, isSuperAdmin]);
 
   if (isSuperAdmin) {
     return (
-      <div className="app-container">
-        <header className="modern-header home-header">
-          <div className="header-content">
-            <div className="header-left">
-              <svg 
-                onClick={onVoltar}
-                width="32" 
-                height="32" 
-                viewBox="0 0 24 24" 
-                fill="none"
-                style={{ 
-                  marginRight: '12px',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                <path 
-                  d="M15 18L9 12L15 6" 
-                  stroke="#1a9bff" 
-                  strokeWidth="3" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <h1 className="header-title">Pesquisas</h1>
+      <>
+        <Sidebar />
+        <div className="app-container app-with-sidebar">
+          <header className="modern-header home-header">
+            <div className="header-content">
+              <div className="header-left">
+                <svg 
+                  onClick={onVoltar}
+                  width="32" 
+                  height="32" 
+                  viewBox="0 0 24 24" 
+                  fill="none"
+                  style={{ 
+                    marginRight: '12px',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
+                >
+                  <path 
+                    d="M15 18L9 12L15 6" 
+                    stroke="#1a9bff" 
+                    strokeWidth="3" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <h1 className="header-title">Pesquisas Aceitas</h1>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="main-content">
-          <div className="page-section">
-            <div className="form-group">
-              <CustomSelect
-                label="Filtrar por entrevistador"
-                options={adminEntrevistadorOptions}
-                value={adminEntrevistadorSel}
-                onChange={(v) => setAdminEntrevistadorSel((v as string) || 'all')}
+          <main className="main-content" style={{ padding: '1.5rem 2rem' }}>
+            {/* Filtros - estilo Dashboard */}
+            <div className="dashboard-filters-row" style={{ marginBottom: '1.5rem' }}>
+              <SimpleSelect
+                label="Período de Análise"
+                options={[
+                  { value: 'hoje', label: 'Hoje' },
+                  { value: 'semana', label: 'Últimos 7 dias' },
+                  { value: 'mes', label: 'Últimos 30 dias' },
+                  { value: 'todos', label: 'Todos os períodos' }
+                ]}
+                value={periodoTabela}
+                onChange={(value) => {
+                  setPeriodoTabela(value as string);
+                  setCurrentPage(0); // Resetar para primeira página
+                }}
+              />
+
+              <SimpleSelect
+                label="Cidade"
+                options={opcoesCidadesTabela}
+                value={cidadeTabela || ''}
+                onChange={(value) => {
+                  setCidadeTabela((value as string) || null);
+                  setCurrentPage(0);
+                }}
+              />
+
+              <SimpleSelect
+                label="Entrevistadora"
+                options={opcoesEntrevistadorasTabela}
+                value={entrevistadorTabela || ''}
+                onChange={(value) => {
+                  setEntrevistadorTabela((value as string) || null);
+                  setCurrentPage(0);
+                }}
               />
             </div>
-          </div>
 
-            {adminLoading ? (
+            {loadingTabela ? (
               <div className="spinner-center"><div className="spinner" /></div>
-            ) : adminPesquisas.length === 0 ? (
-              <div className="empty-state"><div className="empty-icon">📋</div><p>Nenhuma pesquisa encontrada</p></div>
+            ) : pesquisasTabela.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📋</div>
+                <p>Nenhuma pesquisa aceita encontrada</p>
+              </div>
             ) : (
-              <div className="pesquisas-grid">
-                {adminPesquisas.map((p: any) => {
-                  const form = adminMapForm[p.formulario_id] || { nome: p.formulario_nome };
-                  return (
-                    <div key={p.id} className="pesquisa-card" style={{ padding: 12, position: 'relative' }} onClick={() => setPesquisaSelecionada(p)}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                        <div style={{ fontWeight: 600 }}>{form?.nome || p.formulario_nome}</div>
-                      </div>
-                      <div style={{ color: '#6b7280', fontSize: 14, marginBottom: 4 }}>{p.endereco}, {p.bairro} - {p.cidade}</div>
-                      <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, color: '#6b7280' }}>{new Date(p.iniciada_em).toLocaleString('pt-BR')}</span>
-                        {p.audio_url && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <button
-                              className="play-icon-button"
-                              onClick={(e) => { e.stopPropagation(); togglePlayCard(p.id, p.audio_url); }}
-                              aria-label={playingId === p.id ? 'Pausar áudio' : 'Reproduzir áudio'}
-                            >
-                              {playingId === p.id ? (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
-                                  <rect x="6" y="5" width="4" height="14"/>
-                                  <rect x="14" y="5" width="4" height="14"/>
-                                </svg>
+              <>
+                <div className="pesquisas-table-container">
+                  <table className="pesquisas-table">
+                    <thead>
+                      <tr>
+                        <th>Cidade</th>
+                        <th>Endereço</th>
+                        <th>Entrevistadora</th>
+                        <th>Nome</th>
+                        <th>Aniversário</th>
+                        <th>Autorização Contato</th>
+                        <th>WhatsApp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pesquisasTabela.map((p: any) => {
+                        const autorizacao = formatAutorizacao(p.autorizacao_contato);
+                        // Usar entrevistador_primeiro_nome se existir, senão extrair do nome completo
+                        const primeiroNome = p.entrevistador_primeiro_nome || formatPrimeiroNome(p.entrevistador);
+                        return (
+                          <tr key={p.id}>
+                            <td>{p.cidade || '-'}</td>
+                            <td>{p.endereco || '-'}</td>
+                            <td>{primeiroNome}</td>
+                            <td>{p.nome_entrevistado || '-'}</td>
+                            <td>{formatDataNascimento(p.data_nascimento)}</td>
+                            <td>
+                              {autorizacao.class ? (
+                                <span className={`autorizacao-badge ${autorizacao.class}`}>
+                                  {autorizacao.text}
+                                </span>
                               ) : (
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
-                                  <path d="M8 5v14l11-7z" />
-                                </svg>
+                                autorizacao.text
                               )}
-                            </button>
-                            <button
-                              onClick={(e) => handleDownloadAudio(e, p.audio_url)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 36,
-                                height: 36,
-                                borderRadius: 8,
-                                backgroundColor: '#e5f2ff',
-                                color: '#1a9bff',
-                                border: 'none',
-                                cursor: 'pointer'
-                              }}
-                              aria-label="Baixar áudio"
-                              title="Baixar áudio"
-                            >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V4a1 1 0 011-1z"/>
-                                <path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-1a1 1 0 10-2 0v1H7v-1a1 1 0 10-2 0v1z"/>
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, width: '100%' }}>
-                  <button
-                    onClick={() => setAdminLimit((l) => l + 20)}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: '#6b7280',
-                      textDecoration: 'underline',
-                      cursor: 'pointer',
-                      padding: 0,
-                      fontWeight: 600,
-                      fontFamily: 'inherit'
-                    }}
-                  >
-                    Mostrar mais
-                  </button>
+                            </td>
+                            <td>{p.whatsapp || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            )}
-        </main>
 
-        {pesquisaSelecionada && (
-          <div className="modal-overlay" onClick={() => setPesquisaSelecionada(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>Detalhes da Pesquisa</h2>
-                <button onClick={() => setPesquisaSelecionada(null)} className="modal-close-btn" aria-label="Fechar">
-                  ✕
-                </button>
-              </div>
-              <div className="modal-body">
-                {(() => {
-                  const p: any = pesquisaSelecionada as any;
-                  const resp = adminMapResp[p.id];
-                  return (
-                    <div style={{ display: 'grid', gap: 12 }}>
-                      {/* Removidos: Formulário, Áudio, descrição, pré-candidato, local, status */}
-                      <div className="detail-group"><strong>Entrevistador:</strong><p>{p.entrevistador}</p></div>
-                      {/* Respostas normalizadas */}
-                      <div className="detail-group">
-                        <strong>Respostas:</strong>
-                        {resp ? (
-                          <div className="respostas-list">
-                            {Object.entries(resp)
-                              .filter(([k]) => !['id','pesquisa_id','criado_em','atualizado_em','fonte_json','observacao'].includes(k))
-                              .map(([k,v]) => (
-                              <div key={k} className="resposta-item">
-                                <span className="resposta-key">{beautifyKey(k)}:</span>
-                                <span className="resposta-value">{typeof v === 'object' ? JSON.stringify(v) : String(v ?? '')}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p style={{ color: '#6b7280' }}>Sem respostas normalizadas para esta pesquisa.</p>
-                        )}
-                      </div>
-                      {/* Removido: bloco de JSON bruto respostas_ia */}
-                      {p.observacoes_ia && (
-                        <div className="detail-group">
-                          <strong>observacoes_ia:</strong>
-                          <p>{p.observacoes_ia}</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+                <div className="pagination-controls">
+                  <div className="pagination-info">
+                    Mostrando {currentPage * adminLimit + 1} - {currentPage * adminLimit + pesquisasTabela.length} pesquisas
+                  </div>
+                  <div className="pagination-buttons">
+                    <button 
+                      className="pagination-btn" 
+                      onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                      disabled={currentPage === 0}
+                    >
+                      Anterior
+                    </button>
+                    <span style={{ padding: '8px 16px', color: '#6b7280' }}>
+                      Página {currentPage + 1}
+                    </span>
+                    <button 
+                      className="pagination-btn" 
+                      onClick={() => setCurrentPage(p => p + 1)}
+                      disabled={pesquisasTabela.length < adminLimit}
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </main>
+        </div>
+      </>
     );
   }
 

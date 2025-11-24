@@ -256,6 +256,38 @@ export const usePesquisasSupabase = () => {
   });
 };
 
+// Hook para buscar todas as pesquisas para exibir em tabela (paginado com filtros)
+export const usePesquisasTabela = (
+  periodo: string = 'todos',
+  cidade: string | null = null,
+  entrevistador: string | null = null,
+  limit: number = 100,
+  offset: number = 0
+) => {
+  return useQuery({
+    queryKey: ['pesquisas-tabela', periodo, cidade, entrevistador, limit, offset],
+    queryFn: async () => {
+      const { supabase } = await import('../services/supabaseClient');
+      
+      const { data, error } = await supabase.rpc('buscar_todas_pesquisas_tabela', {
+        p_periodo: periodo,
+        p_cidade: cidade,
+        p_entrevistador: entrevistador,
+        p_limit: limit,
+        p_offset: offset
+      });
+      
+      if (error) {
+        console.error('❌ Erro ao buscar pesquisas para tabela:', error);
+        throw error;
+      }
+      
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutos
+  });
+};
+
 // Hook para buscar cidades únicas usando RPC (com fallback)
 export const useCidadesUnicas = () => {
   return useQuery({

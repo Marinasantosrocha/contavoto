@@ -1,0 +1,161 @@
+/* ===================================
+   TABELA DE PESQUISAS - Desktop
+   ================================== */
+
+.pesquisas-table-container {
+  width: 100%;
+  overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pesquisas-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+.pesquisas-table thead {
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.pesquisas-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pesquisas-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
+}
+
+.pesquisas-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.pesquisas-table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+/* Badge de aceite */
+.aceite-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.aceite-badge.aceitaram {
+  background-color: rgba(26, 155, 255, 0.1);
+  color: #1a9bff;
+}
+
+.aceite-badge.ausente {
+  background-color: rgba(156, 163, 175, 0.1);
+  color: #6b7280;
+}
+
+.aceite-badge.recusaram {
+  background-color: rgba(255, 123, 123, 0.1);
+  color: #ff7b7b;
+}
+
+/* Badge de autorização WhatsApp */
+.autorizacao-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.autorizacao-badge.sim {
+  background-color: rgba(26, 155, 255, 0.1);
+  color: #1a9bff;
+}
+
+.autorizacao-badge.nao {
+  background-color: rgba(255, 123, 123, 0.1);
+  color: #ff7b7b;
+}
+
+/* Paginação */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  margin-top: -1px;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #1a9bff;
+  color: #1a9bff;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-btn.active {
+  background-color: #1a9bff;
+  border-color: #1a9bff;
+  color: white;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .pesquisas-table-container {
+    border-radius: 0;
+  }
+  
+  .pesquisas-table {
+    font-size: 12px;
+  }
+  
+  .pesquisas-table th,
+  .pesquisas-table td {
+    padding: 8px 12px;
+  }
+}
+
