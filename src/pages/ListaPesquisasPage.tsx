@@ -3,6 +3,7 @@ import { usePesquisas, useDeletarPesquisa, usePesquisasTabelaTodas } from '../ho
 import { BottomNav } from '../components/BottomNav';
 import { Sidebar } from '../components/Sidebar';
 import { SimpleSelect } from '../components/SimpleSelect';
+import { supabase } from '../services/supabaseClient';
 import '../styles/tabela-pesquisas.css';
 
 interface ListaPesquisasPageProps {
@@ -31,6 +32,11 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   const [periodoSelecionado, setPeriodoSelecionado] = useState<string>('todos');
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string | null>(null);
   const [entrevistadoraSelecionada, setEntrevistadoraSelecionada] = useState<string | null>(null);
+  
+  // Modal de respostas
+  const [pesquisaSelecionadaId, setPesquisaSelecionadaId] = useState<string | null>(null);
+  const [respostasModal, setRespostasModal] = useState<any>(null);
+  const [loadingRespostas, setLoadingRespostas] = useState(false);
   
   // Buscar TODAS as pesquisas aceitas
   const { data: todasPesquisasTabela = [], isLoading: loadingTabela } = usePesquisasTabelaTodas();
@@ -311,6 +317,65 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     return data;
   };
 
+  // Função para buscar respostas da pesquisa
+  const buscarRespostas = async (pesquisaId: string) => {
+    setLoadingRespostas(true);
+    setPesquisaSelecionadaId(pesquisaId);
+    
+    try {
+      const { data, error } = await supabase
+        .from('respostas_formulario_buritizeiro')
+        .select('*')
+        .eq('pesquisa_id', pesquisaId)
+        .single();
+      
+      if (error) {
+        console.error('Erro ao buscar respostas:', error);
+        setRespostasModal(null);
+      } else {
+        setRespostasModal(data);
+      }
+    } catch (err) {
+      console.error('Erro:', err);
+      setRespostasModal(null);
+    } finally {
+      setLoadingRespostas(false);
+    }
+  };
+
+  // Função para fechar o modal
+  const fecharModal = () => {
+    setPesquisaSelecionadaId(null);
+    setRespostasModal(null);
+  };
+
+  // Função para formatar nome dos campos
+  const formatarCampo = (campo: string): string => {
+    const mapa: Record<string, string> = {
+      tempo_moradia: 'Tempo de Moradia',
+      pavimentacao: 'Pavimentação',
+      estradas: 'Estradas',
+      limpeza_urbana: 'Limpeza Urbana',
+      iluminacao_publica: 'Iluminação Pública',
+      atendimento_saude: 'Atendimento de Saúde',
+      acesso_saude: 'Acesso à Saúde',
+      educacao: 'Educação',
+      seguranca_publica: 'Segurança Pública',
+      problema_cidade: 'Problema da Cidade',
+      area_avanco: 'Área que Precisa Avançar',
+      voz_em_brasilia: 'Voz em Brasília',
+      melhoria_com_representante: 'Melhoria com Representante',
+      prioridade_deputado: 'Prioridade do Deputado',
+      autorizacao_contato: 'Autorização de Contato',
+      whatsapp: 'WhatsApp',
+      observacao: 'Observação',
+      conhece_deputado_federal: 'Conhece Deputado Federal',
+      deputado_renda_municipal: 'Deputado e Renda Municipal',
+      importancia_deputado: 'Importância do Deputado'
+    };
+    return mapa[campo] || campo;
+  };
+
 
   if (isSuperAdmin) {
     return (
@@ -416,7 +481,13 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                         const autorizacao = formatAutorizacao(p.autorizacao_contato);
                         const dataPesquisa = p.data_pesquisa ? new Date(p.data_pesquisa).toLocaleDateString('pt-BR') : '-';
                         return (
-                          <tr key={p.id}>
+                          <tr 
+                            key={p.id} 
+                            onClick={() => buscarRespostas(p.id)}
+                            style={{ cursor: 'pointer' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f9ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
+                          >
                             <td>{dataPesquisa}</td>
                             <td>{p.cidade || '-'}</td>
                             <td>{p.endereco || '-'}</td>
@@ -498,6 +569,58 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
               </>
             )}
           </main>
+
+          {/* Modal de Respostas */}
+          {pesquisaSelecionadaId && (
+            <div className="modal-overlay" onClick={fecharModal}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '80vh', overflowY: 'auto' }}>
+                <div className="modal-header">
+                  <h2>Respostas da Pesquisa</h2>
+                  <button onClick={fecharModal} className="modal-close-btn" aria-label="Fechar">
+                    ✕
+                  </button>
+                </div>
+                <div className="modal-body">
+                  {loadingRespostas ? (
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                      <div className="spinner" />
+                      <p>Carregando respostas...</p>
+                    </div>
+                  ) : respostasModal ? (
+                    <div style={{ display: 'grid', gap: '16px' }}>
+                      {Object.entries(respostasModal)
+                        .filter(([key]) => !['id', 'pesquisa_id', 'criado_em', 'atualizado_em', 'nome_morador', 'faixa_etaria'].includes(key))
+                        .filter(([, value]) => value !== null && value !== '')
+                        .map(([key, value]) => (
+                          <div key={key} className="detail-group" style={{ 
+                            padding: '12px',
+                            background: '#f9fafb',
+                            borderRadius: '6px',
+                            borderLeft: '3px solid #1a9bff'
+                          }}>
+                            <strong style={{ color: '#1f2937', display: 'block', marginBottom: '6px' }}>
+                              {formatarCampo(key)}:
+                            </strong>
+                            <p style={{ margin: 0, color: '#4b5563' }}>
+                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </p>
+                          </div>
+                        ))}
+                      {Object.entries(respostasModal).filter(([key]) => !['id', 'pesquisa_id', 'criado_em', 'atualizado_em', 'nome_morador', 'faixa_etaria'].includes(key)).filter(([, value]) => value !== null && value !== '').length === 0 && (
+                        <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>
+                          Nenhuma resposta disponível para esta pesquisa.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: 'center', color: '#ef4444', padding: '2rem' }}>
+                      Erro ao carregar respostas.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </>
     );
