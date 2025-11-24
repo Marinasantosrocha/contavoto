@@ -564,50 +564,10 @@ export const DashboardPage = ({
                   </div>
                 </div>
 
-                {/* 4) Principais Temas (Top 8) - barras horizontais em % */}
-                <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Principais Temas</h4>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-                    {(['problema_cidade','area_avanco','prioridade_deputado'] as const).map((campo) => {
-                      const dist = rfbAgg.distribuicoes[campo] || {};
-                      const entries = Object.entries(dist).filter(([,v]) => v > 0);
-                      if (entries.length === 0) return null;
-                      const data = entries.map(([name, value]) => ({ name, value }));
-                      return (
-                        <div key={campo} className="card" style={{ padding: '0.25rem 0.5rem' }}>
-                          <div className="card-header" style={{ padding: '0.25rem 0.5rem' }}>
-                            <h5 className="card-title" style={{ fontSize: '0.95rem' }}>{RFB_FIELDS.find(f => f.key === campo)?.label}</h5>
-                          </div>
-                          <BarHorizontal data={data} maxBars={8} normalizePercent />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             )}
           </ChartCard>
           </div>
-
-          {/* Motivos de Recusa */}
-          {recusaramPeriodo > 0 && (
-            <div className="dashboard-card dashboard-card-medium">
-              <ChartCard title="Motivos de Recusa" subtitle={`Base: ${recusaramPeriodo} recusas`}>
-                <BarHorizontal data={Object.entries(motivosRecusa).map(([name, value]) => ({ name, value }))} />
-              </ChartCard>
-            </div>
-          )}
-
-          {/* Bairros */}
-          {bairrosOrdenados.length > 0 && (
-            <div className="dashboard-card dashboard-card-medium">
-              <ChartCard title="Top Bairros" subtitle={`Base: ${pesquisasFiltradas.length} pesquisas`}>
-                <BarHorizontal data={bairrosOrdenados.map(([name, value]) => ({ name, value }))} />
-              </ChartCard>
-            </div>
-          )}
 
           {/* Produtividade dos Pesquisadores */}
           <div className="dashboard-card dashboard-card-full">

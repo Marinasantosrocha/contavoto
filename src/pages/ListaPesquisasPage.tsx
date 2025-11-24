@@ -591,6 +591,12 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                       {Object.entries(respostasModal)
                         .filter(([key]) => !['id', 'pesquisa_id', 'criado_em', 'atualizado_em', 'nome_morador', 'faixa_etaria'].includes(key))
                         .filter(([, value]) => value !== null && value !== '')
+                        .sort(([keyA], [keyB]) => {
+                          // Coloca "observacao" por último
+                          if (keyA === 'observacao') return 1;
+                          if (keyB === 'observacao') return -1;
+                          return 0;
+                        })
                         .map(([key, value]) => (
                           <div key={key} className="detail-group" style={{ 
                             padding: '12px',

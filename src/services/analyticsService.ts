@@ -27,8 +27,10 @@ export interface TimeseriesPoint {
   dist: Record<string, number>; // opção -> contagem
 }
 
-// Colunas categóricas da rfb que iremos agregar inicialmente
+// Colunas categóricas da RFB que iremos agregar inicialmente.
+// IMPORTANTE: precisa incluir todos os campos usados em RFB_FIELDS.
 const COLUMNS: string[] = [
+  // Campos principais de percepção (escala 3 pontos)
   'pavimentacao',
   'estradas',
   'limpeza_urbana',
@@ -37,13 +39,18 @@ const COLUMNS: string[] = [
   'acesso_saude',
   'educacao',
   'seguranca_publica',
+
+  // Temas abertos / múltipla escolha
   'problema_cidade',
   'area_avanco',
-  'voz_em_brasilia',
-  'melhoria_com_representante',
   'prioridade_deputado',
-  'autorizacao_contato',
+
+  // Campos adicionais que podem ser usados depois
+  'tempo_moradia',
   'whatsapp',
+  'conhece_deputado_federal',
+  'deputado_renda_municipal',
+  'importancia_deputado',
 ];
 
 // Colunas por tipo para normalização de opções
@@ -58,11 +65,11 @@ const SCALE3_COLUMNS = new Set([
   'seguranca_publica',
 ]);
 
+// Campos que devem ser normalizados para "Sim" / "Não"
 const BINARY_COLUMNS = new Set([
-  'voz_em_brasilia',
-  'melhoria_com_representante',
-  'autorizacao_contato',
-  'whatsapp',
+  'conhece_deputado_federal',
+  'deputado_renda_municipal',
+  // whatsapp e outros campos binários simples podem ser adicionados aqui depois
 ]);
 
 function getPeriodoBounds(periodo?: PeriodoFiltro): { gte?: string } {
@@ -80,86 +87,64 @@ function getPeriodoBounds(periodo?: PeriodoFiltro): { gte?: string } {
 }
 
 export async function fetchRfbAggregations(filters: RfbFilters): Promise<RfbAggregations> {
-  // Monta SELECT com join para aplicar filtros por atributos de pesquisas
-  const select = [
-    'id',
-    ...COLUMNS,
-    // Usa join INNER explícito para poder filtrar campos da tabela embutida
-    'pesquisas!inner(id, usuario_id, entrevistador, formulario_id, formulario_nome, bairro, cidade, iniciada_em, finalizada_em, status)'
-  ].join(',');
+  console.log('🔍 [RFB Analytics] Iniciando busca com filtros (via RPC):', filters);
 
   try {
-    let query = supabase
-      .from('respostas_formulario_buritizeiro')
-      .select(select);
+    // 1) Busca TODAS as respostas elegíveis via função RPC (já filtradas por aceite/status no banco)
+    const startRpc = Date.now();
+    const { data, error } = await supabase.rpc('buscar_todas_respostas_dashboard');
+    const elapsedRpc = Date.now() - startRpc;
+    console.log(`⏱️ [RFB Analytics] RPC buscar_todas_respostas_dashboard levou ${elapsedRpc}ms. Registros retornados: ${data?.length ?? 0}`);
 
-    // Sempre filtra por pesquisas.status != cancelada
-    query = query.neq('pesquisas.status', 'cancelada');
+    if (error) {
+      console.error('❌ [RFB Analytics] Erro ao executar RPC buscar_todas_respostas_dashboard:', error);
+      return { total: 0, distribuicoes: Object.fromEntries(COLUMNS.map(c => [c, {}])) };
+    }
 
-    // Período por iniciada_em (mantém alinhado ao restante do dashboard)
+    let rows = (data || []) as any[];
+
+    // 2) Aplica os MESMOS filtros do dashboard no front‑end
     const bounds = getPeriodoBounds(filters.periodo);
     if (bounds.gte) {
-      query = query.gte('pesquisas.iniciada_em', bounds.gte);
-    }
-
-    if (filters.pesquisadorId) {
-      query = query.eq('pesquisas.usuario_id', filters.pesquisadorId);
-    }
-    
-    if (filters.pesquisadorNome) {
-      query = query.eq('pesquisas.entrevistador', filters.pesquisadorNome);
-    }
-
-    if (filters.formularioUuid) {
-      query = query.eq('pesquisas.formulario_id', filters.formularioUuid);
+      const minDate = new Date(bounds.gte);
+      rows = rows.filter((r) => {
+        const d = r.iniciada_em ? new Date(r.iniciada_em) : null;
+        return d && d >= minDate;
+      });
     }
 
     if (filters.cidade) {
-      // ilike com curinga para busca parcial
-      query = query.ilike('pesquisas.cidade', `%${filters.cidade}%`);
+      const alvo = filters.cidade.toLowerCase();
+      rows = rows.filter((r) => (r.cidade || '').toLowerCase().includes(alvo));
     }
 
-    if (filters.bairro) {
-      query = query.ilike('pesquisas.bairro', `%${filters.bairro}%`);
+    if (filters.pesquisadorNome) {
+      rows = rows.filter((r) => r.entrevistador === filters.pesquisadorNome);
     }
 
-    // Filtros por opção (drill-down): aplicados diretamente nas colunas da RFB
+    // (Opcional) Se algum dia usarmos formularioUuid para múltiplos formulários, filtrar aqui.
+
+    // Filtros de drill‑down por opção (pavimentação, educação, etc.)
     if (filters.categorySelections) {
       for (const [col, val] of Object.entries(filters.categorySelections)) {
-        if (val) {
-          query = query.eq(col, val);
-        }
+        if (!val) continue;
+        rows = rows.filter((r) => r[col] === val);
       }
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    console.log('📊 [RFB Analytics] Total de respostas após filtros do dashboard:', rows.length);
 
-    return aggregateRows(data || []);
+    if (!rows || rows.length === 0) {
+      console.warn('⚠️ [RFB Analytics] Nenhuma resposta encontrada após aplicar filtros do dashboard');
+      return { total: 0, distribuicoes: Object.fromEntries(COLUMNS.map(c => [c, {}])) };
+    }
+
+    const result = aggregateRows(rows);
+    console.log('📈 [RFB Analytics] Agregação concluída:', result);
+    return result;
   } catch (e: any) {
-    // Fallback robusto: consulta IDs em pesquisas com os filtros e depois aplica IN em pesquisa_id
-    const bounds = getPeriodoBounds(filters.periodo);
-    let q = supabase.from('pesquisas').select('id').neq('status', 'cancelada');
-    if (bounds.gte) q = q.gte('iniciada_em', bounds.gte);
-    if (filters.pesquisadorId) q = q.eq('usuario_id', filters.pesquisadorId);
-    if (filters.pesquisadorNome) q = q.eq('entrevistador', filters.pesquisadorNome);
-    if (filters.formularioUuid) q = q.eq('formulario_id', filters.formularioUuid);
-    if (filters.cidade) q = q.ilike('cidade', `%${filters.cidade}%`);
-    if (filters.bairro) q = q.ilike('bairro', `%${filters.bairro}%`);
-    const { data: idsData, error: idsErr } = await q;
-    if (idsErr) throw idsErr;
-    const ids = (idsData || []).map((r: any) => r.id);
-    if (ids.length === 0) return { total: 0, distribuicoes: Object.fromEntries(COLUMNS.map(c => [c, {}])) };
-
-    let r = supabase.from('respostas_formulario_buritizeiro').select(['id', ...COLUMNS].join(',')).in('pesquisa_id', ids);
-    if (filters.categorySelections) {
-      for (const [col, val] of Object.entries(filters.categorySelections)) {
-        if (val) r = r.eq(col, val);
-      }
-    }
-    const { data: rfbData, error: rfbErr } = await r;
-    if (rfbErr) throw rfbErr;
-    return aggregateRows(rfbData || []);
+    console.error('❌ [RFB Analytics] Erro geral ao buscar agregações da RFB (RPC):', e);
+    return { total: 0, distribuicoes: Object.fromEntries(COLUMNS.map(c => [c, {}])) };
   }
 }
 
@@ -202,13 +187,13 @@ export async function fetchRfbTimeseries(params: RfbFilters & { fieldKey: string
   const select = [
     'id',
     fieldKey,
-    'pesquisas!inner(id, iniciada_em, usuario_id, formulario_id, cidade, bairro, status)'
+    'pesquisas!inner(id, iniciada_em, usuario_id, formulario_id, cidade, bairro, status, aceite_participacao)'
   ].join(',');
 
   const bounds = getPeriodoBounds(filters.periodo);
 
   try {
-    let query = supabase.from('respostas_formulario_buritizeiro').select(select).neq('pesquisas.status', 'cancelada');
+    let query = supabase.from('respostas_formulario_buritizeiro').select(select).neq('pesquisas.status', 'cancelada').eq('pesquisas.aceite_participacao', 'true');
     if (bounds.gte) query = query.gte('pesquisas.iniciada_em', bounds.gte);
     if (filters.pesquisadorId) query = query.eq('pesquisas.usuario_id', filters.pesquisadorId);
     if (filters.formularioUuid) query = query.eq('pesquisas.formulario_id', filters.formularioUuid);
@@ -226,7 +211,7 @@ export async function fetchRfbTimeseries(params: RfbFilters & { fieldKey: string
     return aggregateTimeseries(data || [], fieldKey, bucket);
   } catch (e: any) {
     // Fallback: busca pesquisas com iniciada_em e depois rfb por pesquisa_id
-    let q = supabase.from('pesquisas').select('id, iniciada_em').neq('status', 'cancelada');
+    let q = supabase.from('pesquisas').select('id, iniciada_em').neq('status', 'cancelada').eq('aceite_participacao', 'true');
     if (bounds.gte) q = q.gte('iniciada_em', bounds.gte);
     if ((filters as any).pesquisadorId) q = q.eq('usuario_id', (filters as any).pesquisadorId);
     if ((filters as any).formularioUuid) q = q.eq('formulario_id', (filters as any).formularioUuid);
@@ -288,8 +273,11 @@ function normalizeOptionForColumn(column: string, raw: string): string {
     if (/(nao sei|nao sabe|não sei|não sabe)/i.test(v) || /nao sei|nao sabe/.test(simple)) {
       return 'Não sei';
     }
-    // Está Igual
-    if (/(esta igual|está igual|igual|mesmo)/i.test(v) || /esta igual|igual|mesmo/.test(simple)) {
+    // Está Igual  (unifica "está igual", "estão iguais", "igual", "iguais", "mesmo", etc.)
+    if (
+      /(est(a|á|ao|ão)\s+iguais?|igual|iguais|mesmo)/i.test(v) ||
+      /est(a|ao|ao)\s+iguais?|igual|iguais|mesmo/.test(simple)
+    ) {
       return 'Está Igual';
     }
     // Melhorou
@@ -305,8 +293,30 @@ function normalizeOptionForColumn(column: string, raw: string): string {
   }
 
   if (BINARY_COLUMNS.has(column)) {
-    if (/^(sim|s|yes|y|true|1)$/i.test(simple)) return 'Sim';
-    if (/^(nao|não|n|no|false|0)$/i.test(simple)) return 'Não';
+    // Mantém "Não sei" separado quando aparecer em campos binários
+    if (/(nao sei|não sei)/i.test(v) || /nao sei/.test(simple)) {
+      return 'Não sei';
+    }
+
+    // Qualquer resposta que contenha "não" / "nao" (ex.: "Não", "Não conheço",
+    // "Não, não conheço nenhum", "Não conheço nenhum", "Não sabia" etc.)
+    // é agrupada como "Não".
+    if (/\b(nao|não)\b/i.test(v) || /\bnao\b/.test(simple)) {
+      return 'Não';
+    }
+
+    // Normaliza qualquer resposta afirmativa para "Sim".
+    // Exemplos: "Sim", "sim, sabia", "Sim, Sabia", "Sabia", "Já sabia", etc.
+    if (
+      /^(sim|s|yes|y|true|1)$/i.test(simple) || // respostas curtas
+      /\bsim\b/i.test(v) ||                    // contém a palavra "sim"
+      /\bsabia\b/i.test(v) ||                  // "sabia" (sem "não")
+      /\bconhe(c|ç)o\b/i.test(v)               // "conheço", "conheco"
+    ) {
+      return 'Sim';
+    }
+
+    // Fallback: retorna o valor original aparado
     return v;
   }
 

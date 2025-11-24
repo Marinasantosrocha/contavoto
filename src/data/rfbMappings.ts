@@ -27,10 +27,12 @@ export const RFB_FIELDS: RfbFieldConfig[] = [
   // Outros temas
   { key: 'problema_cidade', label: 'Principal Problema na Cidade', type: 'multi' },
   { key: 'area_avanco', label: 'Área que mais Avançou', type: 'multi' },
-  { key: 'voz_em_brasilia', label: 'Representante com Voz em Brasília?' , type: 'binary', order: ['Sim', 'Não']},
-  { key: 'melhoria_com_representante', label: 'Melhoria com Representante?' , type: 'binary', order: ['Sim', 'Não']},
   { key: 'prioridade_deputado', label: 'Prioridade do Deputado', type: 'multi' },
-  { key: 'autorizacao_contato', label: 'Autorizou Contato?', type: 'binary', order: ['Sim, autorizo', 'Não autorizo'] },
+
+  // Indicadores de aprovação (novos campos)
+  { key: 'conhece_deputado_federal', label: 'Conhece Deputado Federal da Região?', type: 'binary' },
+  { key: 'deputado_renda_municipal', label: 'Deputado vs Renda Municipal?', type: 'binary' },
+  { key: 'importancia_deputado', label: 'Importância do Deputado?', type: 'binary' },
 ];
 
 export function getFieldLabel(key: string) {

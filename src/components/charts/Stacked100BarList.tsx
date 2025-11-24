@@ -24,6 +24,10 @@ const COLORS: Record<string, string> = {
   'Não': '#FF7B7B',
   'Sim, autorizo': '#1a9bff', // azul para autorização
   'Não autorizo': '#FF7B7B', // vermelho para não autorização
+  // Importância do Deputado
+  'Muito importante': '#1d4ed8', // azul forte
+  'Importante': '#3b82f6',      // azul médio
+  'Pouco importante': '#93c5fd', // azul claro
 };
 
 export function Stacked100BarList({ rows, height = 52, onSegmentClick }: Stacked100BarListProps) {
@@ -31,9 +35,11 @@ export function Stacked100BarList({ rows, height = 52, onSegmentClick }: Stacked
   const buildData = (row: StackedRow) => {
     const entries = Object.entries(row.dist);
     const total = entries.reduce((a, [,v]) => a + v, 0) || 1;
-    const keys = row.order && row.order.length > 0
-      ? row.order
-      : entries.sort((a,b) => b[1] - a[1]).map(([k]) => k);
+    // Ordena SEMPRE pelo maior valor primeiro, independente da ordem preferencial,
+    // para que em cada linha o segmento com maior percentual venha primeiro.
+    const keys = entries
+      .sort((a, b) => b[1] - a[1])
+      .map(([k]) => k);
     const obj: any = { name: row.label };
     keys.forEach(k => obj[k] = Math.round((row.dist[k] || 0) * 1000 / total) / 10);
     return { data: [obj], keys };
@@ -51,7 +57,20 @@ export function Stacked100BarList({ rows, height = 52, onSegmentClick }: Stacked
                 <BarChart data={data} layout="vertical" margin={{ left: 0, right: 0, top: 0, bottom: 0 }}>
                   <XAxis type="number" domain={[0, 100]} hide />
                   <YAxis dataKey="name" type="category" hide />
-                  <Tooltip formatter={(v: any, n: any) => [`${v}%`, n]} />
+                  <Tooltip
+                    formatter={(v: any, n: any) => [`${v}%`, n]}
+                    wrapperStyle={{ zIndex: 2000 }}
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: 8,
+                      border: '1px solid #e5e7eb',
+                      boxShadow: '0 8px 20px rgba(15,23,42,0.15)',
+                      padding: '8px 10px',
+                      fontSize: 12,
+                      color: '#111827',
+                    }}
+                    cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+                  />
                   {keys.map((k, idx) => (
                     <Bar
                       key={k}
