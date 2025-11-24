@@ -32,10 +32,10 @@ WHERE aceite_participacao = 'true';
 
 -- 4. Ver exemplo de dados (primeiros 5 registros)
 SELECT 
+  iniciada_em::date as data,
   cidade,
   endereco,
-  entrevistador as entrevistador_completo,
-  SPLIT_PART(entrevistador, ' ', 1) as primeiro_nome,
+  SPLIT_PART(entrevistador, ' ', 1) as entrevistadora,
   nome_entrevistado as nome,
   data_nascimento as aniversario,
   autorizacao_contato,

@@ -256,23 +256,14 @@ export const usePesquisasSupabase = () => {
   });
 };
 
-// Hook para buscar todas as pesquisas para exibir em tabela (paginado com filtros)
-export const usePesquisasTabela = (
-  periodo: string = 'todos',
-  cidade: string | null = null,
-  entrevistador: string | null = null,
-  limit: number = 100,
-  offset: number = 0
-) => {
+// Hook para buscar todas as pesquisas para exibir em tabela (paginado)
+export const usePesquisasTabela = (limit: number = 100, offset: number = 0) => {
   return useQuery({
-    queryKey: ['pesquisas-tabela', periodo, cidade, entrevistador, limit, offset],
+    queryKey: ['pesquisas-tabela', limit, offset],
     queryFn: async () => {
       const { supabase } = await import('../services/supabaseClient');
       
       const { data, error } = await supabase.rpc('buscar_todas_pesquisas_tabela', {
-        p_periodo: periodo,
-        p_cidade: cidade,
-        p_entrevistador: entrevistador,
         p_limit: limit,
         p_offset: offset
       });

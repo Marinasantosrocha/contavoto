@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePesquisas, useDeletarPesquisa, usePesquisasTabela } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
 import { Sidebar } from '../components/Sidebar';
-import { SimpleSelect } from '../components/SimpleSelect';
 import '../styles/tabela-pesquisas.css';
-import '../styles/dashboard.css';
 
 interface ListaPesquisasPageProps {
   onVoltar: () => void;
@@ -24,21 +22,12 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   // const [audioProgress, setAudioProgress] = useState<Record<number, number>>({});
   const [playingId, setPlayingId] = useState<number | null>(null);
   const audioMapRef = useMemo(() => new Map<number, HTMLAudioElement>(), []);
-  // Paginação e filtros da tabela (Admin)
+  // Paginação da tabela (Admin)
   const [adminLimit] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState<number>(0);
-  const [periodoTabela, setPeriodoTabela] = useState<string>('todos');
-  const [cidadeTabela, setCidadeTabela] = useState<string | null>(null);
-  const [entrevistadorTabela, setEntrevistadorTabela] = useState<string | null>(null);
   
-  // Paginação para tabela com filtros
-  const { data: pesquisasTabela = [], isLoading: loadingTabela } = usePesquisasTabela(
-    periodoTabela,
-    cidadeTabela,
-    entrevistadorTabela,
-    adminLimit,
-    currentPage * adminLimit
-  );
+  // Paginação para tabela
+  const { data: pesquisasTabela = [], isLoading: loadingTabela } = usePesquisasTabela(adminLimit, currentPage * adminLimit);
 
   // React Query hooks
   const filtroObj = filtro === 'todas' ? undefined : { status: filtro };
@@ -223,36 +212,6 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     return data;
   };
 
-  const formatPrimeiroNome = (nomeCompleto: string | null) => {
-    if (!nomeCompleto) return '-';
-    return nomeCompleto.split(' ')[0];
-  };
-
-  // Opções de filtro para a tabela (extraídas das pesquisas)
-  const opcoesCidadesTabela = useMemo(() => {
-    const cidades = new Set<string>();
-    pesquisasTabela.forEach(p => {
-      if (p.cidade) cidades.add(p.cidade);
-    });
-    const cidadesArray = Array.from(cidades).sort((a, b) => a.localeCompare(b));
-    return [
-      { value: '', label: 'Todas as Cidades' },
-      ...cidadesArray.map(c => ({ value: c, label: c }))
-    ];
-  }, [pesquisasTabela]);
-
-  const opcoesEntrevistadorasTabela = useMemo(() => {
-    const entrevistadores = new Set<string>();
-    pesquisasTabela.forEach(p => {
-      if (p.entrevistador) entrevistadores.add(p.entrevistador);
-    });
-    const entrevistadoresArray = Array.from(entrevistadores).sort((a, b) => a.localeCompare(b));
-    return [
-      { value: '', label: 'Todas as Entrevistadoras' },
-      ...entrevistadoresArray.map(e => ({ value: e, label: e }))
-    ];
-  }, [pesquisasTabela]);
-
 
   if (isSuperAdmin) {
     return (
@@ -288,44 +247,6 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
           </header>
 
           <main className="main-content" style={{ padding: '1.5rem 2rem' }}>
-            {/* Filtros - estilo Dashboard */}
-            <div className="dashboard-filters-row" style={{ marginBottom: '1.5rem' }}>
-              <SimpleSelect
-                label="Período de Análise"
-                options={[
-                  { value: 'hoje', label: 'Hoje' },
-                  { value: 'semana', label: 'Últimos 7 dias' },
-                  { value: 'mes', label: 'Últimos 30 dias' },
-                  { value: 'todos', label: 'Todos os períodos' }
-                ]}
-                value={periodoTabela}
-                onChange={(value) => {
-                  setPeriodoTabela(value as string);
-                  setCurrentPage(0); // Resetar para primeira página
-                }}
-              />
-
-              <SimpleSelect
-                label="Cidade"
-                options={opcoesCidadesTabela}
-                value={cidadeTabela || ''}
-                onChange={(value) => {
-                  setCidadeTabela((value as string) || null);
-                  setCurrentPage(0);
-                }}
-              />
-
-              <SimpleSelect
-                label="Entrevistadora"
-                options={opcoesEntrevistadorasTabela}
-                value={entrevistadorTabela || ''}
-                onChange={(value) => {
-                  setEntrevistadorTabela((value as string) || null);
-                  setCurrentPage(0);
-                }}
-              />
-            </div>
-
             {loadingTabela ? (
               <div className="spinner-center"><div className="spinner" /></div>
             ) : pesquisasTabela.length === 0 ? (
@@ -339,6 +260,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                   <table className="pesquisas-table">
                     <thead>
                       <tr>
+                        <th>Data</th>
                         <th>Cidade</th>
                         <th>Endereço</th>
                         <th>Entrevistadora</th>
@@ -351,13 +273,13 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                     <tbody>
                       {pesquisasTabela.map((p: any) => {
                         const autorizacao = formatAutorizacao(p.autorizacao_contato);
-                        // Usar entrevistador_primeiro_nome se existir, senão extrair do nome completo
-                        const primeiroNome = p.entrevistador_primeiro_nome || formatPrimeiroNome(p.entrevistador);
+                        const dataPesquisa = p.data_pesquisa ? new Date(p.data_pesquisa).toLocaleDateString('pt-BR') : '-';
                         return (
                           <tr key={p.id}>
+                            <td>{dataPesquisa}</td>
                             <td>{p.cidade || '-'}</td>
                             <td>{p.endereco || '-'}</td>
-                            <td>{primeiroNome}</td>
+                            <td>{p.entrevistadora || '-'}</td>
                             <td>{p.nome_entrevistado || '-'}</td>
                             <td>{formatDataNascimento(p.data_nascimento)}</td>
                             <td>
