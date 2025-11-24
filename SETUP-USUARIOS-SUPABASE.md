@@ -79,3 +79,8 @@ VITE_SUPABASE_ANON_KEY=sua_chave_aqui
 
 
 
+
+
+
+
+

@@ -8,7 +8,6 @@ import { useAceiteStats } from '../hooks/useAceiteStats';
 import { useAceitePorEntrevistador } from '../hooks/useAceitePorEntrevistador';
 // import { useFormularios } from '../hooks/useFormularios';
 import { useRfbAnalytics } from '../hooks/useRfbAnalytics';
-import { useProdutividade } from '../hooks/useProdutividade';
 import { RFB_FIELDS, getFieldLabel, orderEntries } from '../data/rfbMappings';
 import { ChartCard } from '../components/ChartCard';
 import { DonutChart } from '../components/charts/DonutChart';
@@ -45,7 +44,6 @@ export const DashboardPage = ({
   // Buscar TODAS as pesquisas do Supabase (filtros aplicados no frontend)
   const { data: pesquisas = [] } = usePesquisasSupabase();
   const { data: pesquisadores = [] } = usePesquisadores();
-  const { data: produtividade = [] } = useProdutividade();
   const { data: aceiteStats } = useAceiteStats();
   const { data: aceitePorEntrevistador = {} } = useAceitePorEntrevistador();
 
@@ -219,12 +217,102 @@ export const DashboardPage = ({
   const bairrosOrdenados = Object.entries(pesquisasPorBairro)
     .sort(([, a], [, b]) => b - a);
 
-  // Produtividade filtrada (responde aos 3 filtros: período, cidade e entrevistador)
+  // Produtividade filtrada (somente pesquisas ACEITAS, respeitando os filtros do dashboard)
+  // Calculada no frontend a partir de pesquisasFiltradas, para garantir alinhamento de filtros.
   const produtividadeFiltrada = useMemo(() => {
-    // Apenas pesquisadores que têm pesquisas nos filtros aplicados
-    const pesquisadorNomes = new Set(pesquisasFiltradas.map(p => p.entrevistador));
-    return produtividade.filter(p => pesquisadorNomes.has(p.entrevistador));
-  }, [produtividade, pesquisasFiltradas]);
+    type TempoEntrevista = { inicio?: Date | null; fim?: Date | null; duracaoMin?: number | null };
+
+    // 1) Filtra somente pesquisas ACEITAS (aceite_participacao = 'true'),
+    // respeitando todos os filtros já aplicados em pesquisasFiltradas.
+    const entrevistasValidas = pesquisasFiltradas.filter((p: any) => {
+      const aceite = (p as any).aceite_participacao || p.aceite_participacao;
+      return aceite === 'true';
+    });
+
+    console.log('📊 [Produtividade] Pesquisas filtradas (todas):', pesquisasFiltradas.length);
+    console.log('📊 [Produtividade] Entrevistas aceitas para produtividade:', entrevistasValidas.length);
+
+    // 2) Agrupa por entrevistador
+    const porEntrevistador = new Map<string, TempoEntrevista[]>();
+
+    entrevistasValidas.forEach((p: any) => {
+      const nome = p.entrevistador;
+      if (!nome) return;
+
+      const duracaoAudioSeg = Number((p as any).audio_duracao);
+      const duracaoMin =
+        Number.isFinite(duracaoAudioSeg) && duracaoAudioSeg > 0
+          ? duracaoAudioSeg / 60
+          : null;
+      if (duracaoMin) {
+        console.log('⏱️ [Produtividade] Entrevista com áudio:', nome, '->', duracaoMin, 'min');
+      }
+
+      const inicioRaw = p.iniciadaEm || p.iniciada_em;
+      const fimRaw = p.finalizadaEm || p.finalizada_em;
+      const inicio = inicioRaw ? new Date(inicioRaw) : null;
+      const fim = fimRaw ? new Date(fimRaw) : null;
+
+      if (!porEntrevistador.has(nome)) {
+        porEntrevistador.set(nome, []);
+      }
+      porEntrevistador.get(nome)!.push({ inicio, fim, duracaoMin });
+    });
+
+    // 3) Calcula métricas por entrevistador
+    const resultado: {
+      entrevistador: string;
+      total_entrevistas: number;
+      duracao_media_minutos: number;
+      intervalo_medio_minutos: number | null;
+    }[] = [];
+
+    for (const [nome, tempos] of porEntrevistador.entries()) {
+      if (!tempos.length) continue;
+
+      // Ordena por início
+      tempos.sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
+
+      // Duração média (usando apenas as entrevistas que possuem duração de áudio)
+      const duracoes = tempos
+        .map(t => t.duracaoMin ?? null)
+        .filter(d => Number.isFinite(d) && d > 0);
+
+      if (!duracoes.length) continue;
+
+      const duracaoMedia =
+        Math.round((duracoes.reduce((sum, d) => sum + d, 0) / duracoes.length) * 10) / 10;
+
+      // Intervalo médio entre entrevistas (apenas 0 < intervalo <= 60 minutos),
+      // calculado somente quando temos iniciada_em/finalizada_em válidos.
+      const intervalos: number[] = [];
+      for (let i = 0; i < tempos.length - 1; i++) {
+        const atual = tempos[i];
+        const prox = tempos[i + 1];
+        if (!atual.fim || !prox.inicio) continue;
+        const diffMin = (prox.inicio.getTime() - atual.fim.getTime()) / 60000;
+        if (Number.isFinite(diffMin) && diffMin > 0 && diffMin <= 60) {
+          intervalos.push(diffMin);
+        }
+      }
+
+      const intervaloMedio =
+        intervalos.length > 0
+          ? Math.round((intervalos.reduce((sum, d) => sum + d, 0) / intervalos.length) * 10) / 10
+          : null;
+
+      resultado.push({
+        entrevistador: nome,
+        total_entrevistas: duracoes.length,
+        duracao_media_minutos: duracaoMedia,
+        intervalo_medio_minutos: intervaloMedio,
+      });
+    }
+
+    // Ordena por total de entrevistas (maior primeiro)
+    resultado.sort((a, b) => b.total_entrevistas - a.total_entrevistas);
+    return resultado;
+  }, [pesquisasFiltradas]);
 
   // ============================================
   // OPÇÕES DE FILTROS INTERLIGADOS
@@ -525,10 +613,10 @@ export const DashboardPage = ({
                   />
                 </div>
 
-                {/* 2) Indicadores Binários - barras empilhadas 100% */}
+                {/* 2) Visão Deputado (Indicadores Binários) - barras empilhadas 100% */}
                 <div className="card" style={{ padding: '0.75rem 1rem' }}>
                   <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Indicadores de Aprovação</h4>
+                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Visão Deputado</h4>
                   </div>
                   <Stacked100BarList
                     rows={RFB_FIELDS.filter(f => f.type === 'binary').map(f => ({
@@ -541,11 +629,8 @@ export const DashboardPage = ({
                   />
                 </div>
 
-                {/* 3) Perfil: Faixa etária e Tempo de moradia - donuts por campo */}
+                {/* 3) Perfil: Faixa etária e Tempo de moradia - donuts por campo (sem título principal) */}
                 <div className="card" style={{ padding: '0.75rem 1rem' }}>
-                  <div className="card-header" style={{ padding: 0, marginBottom: '0.5rem' }}>
-                    <h4 className="card-title" style={{ fontSize: '1rem' }}>Perfil dos Entrevistados</h4>
-                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
                     {RFB_FIELDS.filter(f => f.type === 'ordinal').map(f => {
                       const dist = rfbAgg.distribuicoes[f.key] || {};

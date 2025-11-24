@@ -17,6 +17,9 @@ RETURNS TABLE (
   entrevistador text,
   autorizacao_contato text,
   iniciada_em timestamptz,
+  finalizada_em timestamptz,
+  status text,
+  audio_duracao numeric,
   bairro text,
   motivo_recusa text
 ) 
@@ -29,6 +32,9 @@ AS $$
     p.entrevistador,
     p.autorizacao_contato::text,
     p.iniciada_em,
+    p.finalizada_em,
+    p.status,
+    p.audio_duracao,
     p.bairro,
     p.motivo_recusa
   FROM pesquisas p

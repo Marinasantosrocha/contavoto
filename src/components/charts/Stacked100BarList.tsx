@@ -25,9 +25,9 @@ const COLORS: Record<string, string> = {
   'Sim, autorizo': '#1a9bff', // azul para autorização
   'Não autorizo': '#FF7B7B', // vermelho para não autorização
   // Importância do Deputado
-  'Muito importante': '#1d4ed8', // azul forte
-  'Importante': '#3b82f6',      // azul médio
-  'Pouco importante': '#93c5fd', // azul claro
+  'Muito importante': '#1a9bff', // azul padrão
+  'Importante': '#64748B',       // cinza
+  'Pouco importante': '#FF7B7B', // vermelho
 };
 
 export function Stacked100BarList({ rows, height = 52, onSegmentClick }: Stacked100BarListProps) {

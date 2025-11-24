@@ -10,6 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "worker:stt": "node worker/stt-worker.js",
+    "worker:ia": "node worker/processar-ia-pendentes.js",
+    "worker:transcrever": "node worker/transcrever-pendentes.js",
     "test:db": "node testar-banco.js"
   },
   "dependencies": {

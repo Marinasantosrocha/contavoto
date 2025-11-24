@@ -469,3 +469,8 @@ React Query já funciona bem offline:
 
 
 
+
+
+
+
+
