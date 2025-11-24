@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BottomNav } from '../components/BottomNav';
+import { Sidebar } from '../components/Sidebar';
 import AceiteParticipacao from '../components/AceiteParticipacao';
 import CheckboxQuestion from '../components/CheckboxQuestion';
 import RecordingIndicator from '../components/RecordingIndicator';
@@ -18,6 +19,13 @@ interface PesquisaPageProps {
 }
 
 export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPageProps) => {
+  // Verificar tipo de usuário
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : {};
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
+  const isPesquisador = tipoUsuarioId === 1;
+  
   // React Query hooks
   const { data: pesquisa, isLoading: loadingPesquisa } = usePesquisa(pesquisaId);
   const { data: formulario, isLoading: loadingFormulario } = useFormulario(
@@ -523,7 +531,11 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
 
   // Tela de Pesquisa
   return (
-    <div className="app-container">
+    <>
+      {/* Menu Lateral para Admin/Suporte */}
+      {!isPesquisador && <Sidebar />}
+      
+    <div className={`app-container ${!isPesquisador ? 'app-with-sidebar' : ''}`}>
       {/* Header - Ocultar quando estiver na tela de pesquisa (após selecionar localização) */}
       {!pesquisaId && (
         <header className="modern-header home-header">
@@ -707,8 +719,9 @@ export const PesquisaPage = ({ pesquisaId, onFinalizar, onCancelar }: PesquisaPa
         duration={recordingDuration}
       />
 
-      {/* Bottom Navigation - Ocultar quando estiver na tela de pesquisa (após selecionar localização) */}
-      {!pesquisaId && <BottomNav />}
+      {/* Menu Inferior apenas para Pesquisadores */}
+      {!pesquisaId && isPesquisador && <BottomNav />}
     </div>
+    </>
   );
 };

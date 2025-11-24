@@ -32,6 +32,12 @@ function AppContent() {
   // const inicializarFormulario = useInicializarFormulario();
   const { showInstallPrompt, installApp, dismissInstallPrompt } = usePWA();
   const online = useOnlineStatus();
+  
+  // Verificar tipo de usuário
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
+  const isPesquisador = tipoUsuarioId === 1;
 
   // Inicializa o formulário modelo na primeira execução
   useEffect(() => {
@@ -112,8 +118,8 @@ function AppContent() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       
-      {/* PWA Install Banner - aparece em todas as páginas protegidas */}
-      {showInstallPrompt && (
+      {/* PWA Install Banner - apenas para pesquisadores (mobile) */}
+      {showInstallPrompt && isPesquisador && (
         <div className="pwa-install-banner">
           <div className="install-content">
             <div className="install-icon">📱</div>

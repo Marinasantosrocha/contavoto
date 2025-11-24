@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { trocarFotoUsuario } from '../services/storageService';
 import { BottomNav } from '../components/BottomNav';
+import { Sidebar } from '../components/Sidebar';
 import '../styles/design-system.css';
 
 interface TipoUsuario {
@@ -23,6 +24,14 @@ interface Usuario {
 
 export const PermissionsPage: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Verificar tipo de usuário
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : {};
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
+  const isPesquisador = tipoUsuarioId === 1;
+  
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -264,7 +273,11 @@ export const PermissionsPage: React.FC = () => {
   };
 
   return (
-    <div className="app-container">
+    <>
+      {/* Menu Lateral para Admin/Suporte */}
+      {!isPesquisador && <Sidebar />}
+      
+    <div className={`app-container ${!isPesquisador ? 'app-with-sidebar' : ''}`}>
       {/* Header */}
       <header className="modern-header home-header">
         <div className="header-content">
@@ -704,8 +717,9 @@ export const PermissionsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Navegação Inferior */}
-      <BottomNav />
+      {/* Menu Inferior apenas para Pesquisadores */}
+      {isPesquisador && <BottomNav />}
     </div>
+    </>
   );
 };

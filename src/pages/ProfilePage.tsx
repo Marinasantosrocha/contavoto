@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Sidebar } from '../components/Sidebar';
+import { BottomNav } from '../components/BottomNav';
 import '../styles/design-system.css';
 
 interface ProfilePageProps {
@@ -17,6 +19,11 @@ interface UserData {
 export function ProfilePage({ onLogout }: ProfilePageProps) {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserData | null>(null);
+  
+  // Verificar tipo de usuário
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoUsuarioId = user?.tipo || (user as any)?.tipo_usuario_id;
+  const isPesquisador = tipoUsuarioId === 1;
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -64,7 +71,11 @@ export function ProfilePage({ onLogout }: ProfilePageProps) {
   }
 
   return (
-    <div className="app-container">
+    <>
+      {/* Menu Lateral para Admin/Suporte */}
+      {!isPesquisador && <Sidebar />}
+      
+    <div className={`app-container ${!isPesquisador ? 'app-with-sidebar' : ''}`}>
       <header className="modern-header home-header">
         <div className="header-content">
           <div className="header-left">
@@ -121,6 +132,10 @@ export function ProfilePage({ onLogout }: ProfilePageProps) {
           </button>
         </div>
       </main>
+
+      {/* Menu Inferior apenas para Pesquisadores */}
+      {isPesquisador && <BottomNav />}
     </div>
+    </>
   );
 }

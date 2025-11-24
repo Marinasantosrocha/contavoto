@@ -199,58 +199,128 @@ export const useCidades = () => {
   });
 };
 
-// Hook para buscar pesquisas do Supabase (não do IndexedDB)
-export const usePesquisasSupabase = (filtros?: {
-  periodo?: 'hoje' | 'semana' | 'mes' | 'todos';
-  pesquisadorNome?: string | null;
-  cidade?: string | null;
-}) => {
+// Hook para buscar TODAS as pesquisas usando RPC com paginação
+export const usePesquisasSupabase = () => {
   return useQuery({
-    queryKey: ['pesquisas-supabase', filtros],
+    queryKey: ['todas-pesquisas-supabase'],
     queryFn: async () => {
       const { supabase } = await import('../services/supabaseClient');
       
-      let query = supabase
-        .from('pesquisas')
-        .select('*')
-        .order('iniciada_em', { ascending: false });
+      console.log('🔍 Buscando TODAS as pesquisas via RPC paginado...');
       
-      // Filtro de período
-      if (filtros?.periodo && filtros.periodo !== 'todos') {
-        const hoje = new Date();
-        let dataInicio: Date;
+      const allPesquisas: any[] = [];
+      let offset = 0;
+      const limit = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        console.log(`📄 Buscando lote: LIMIT ${limit} OFFSET ${offset}...`);
         
-        if (filtros.periodo === 'hoje') {
-          dataInicio = new Date(hoje.setHours(0, 0, 0, 0));
-        } else if (filtros.periodo === 'semana') {
-          dataInicio = new Date();
-          dataInicio.setDate(hoje.getDate() - 7);
-        } else if (filtros.periodo === 'mes') {
-          dataInicio = new Date();
-          dataInicio.setMonth(hoje.getMonth() - 1);
-        } else {
-          dataInicio = new Date(0); // Todas
+        const { data, error } = await supabase.rpc('buscar_pesquisas_paginadas', {
+          p_limit: limit,
+          p_offset: offset
+        });
+        
+        if (error) {
+          console.error('❌ Erro ao buscar pesquisas via RPC:', error);
+          throw error;
         }
         
-        query = query.gte('iniciada_em', dataInicio.toISOString());
+        if (data && data.length > 0) {
+          allPesquisas.push(...data);
+          console.log(`✅ Lote retornou ${data.length} registros (Total: ${allPesquisas.length})`);
+          
+          // Se retornou menos que o limit, não há mais dados
+          if (data.length < limit) {
+            hasMore = false;
+          }
+          
+          offset += limit;
+        } else {
+          hasMore = false;
+        }
+        
+        // Limite de segurança (20 páginas = 20.000 registros)
+        if (offset >= 20000) {
+          console.warn('⚠️ Limite de 20.000 registros atingido');
+          hasMore = false;
+        }
       }
       
-      // Filtro de pesquisador (por nome, não por ID)
-      if (filtros?.pesquisadorNome) {
-        query = query.eq('entrevistador', filtros.pesquisadorNome);
+      console.log('🎉 Total de pesquisas carregadas:', allPesquisas.length);
+      console.log('📍 Cidades encontradas:', [...new Set(allPesquisas.map((p: any) => p.cidade).filter(Boolean))]);
+      
+      return allPesquisas;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutos - cache mais longo pois busca tudo
+  });
+};
+
+// Hook para buscar cidades únicas usando RPC (com fallback)
+export const useCidadesUnicas = () => {
+  return useQuery({
+    queryKey: ['cidades-unicas'],
+    queryFn: async () => {
+      const { supabase } = await import('../services/supabaseClient');
+      
+      console.log('🏙️ Tentando buscar cidades únicas via RPC...');
+      
+      const rpcResult = await supabase.rpc('get_cidades_unicas');
+      
+      // Se RPC funcionar, usar ele
+      if (!rpcResult.error && rpcResult.data) {
+        const cidades = (rpcResult.data || []).map((item: any) => item.cidade);
+        console.log('✅ Cidades únicas (RPC):', cidades);
+        return cidades;
       }
       
-      // Filtro de cidade
-      if (filtros?.cidade) {
-        query = query.eq('cidade', filtros.cidade);
-      }
+      // FALLBACK: Query normal
+      console.warn('⚠️ RPC cidades falhou, usando query normal:', rpcResult.error);
       
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from('pesquisas')
+        .select('cidade')
+        .not('cidade', 'is', null);
       
       if (error) throw error;
-      return data || [];
+      
+      const cidadesUnicas = [...new Set((data || []).map((p: any) => p.cidade))];
+      console.log('✅ Cidades únicas (fallback):', cidadesUnicas);
+      
+      return cidadesUnicas.sort((a, b) => a.localeCompare(b));
     },
-    staleTime: 1000 * 30, // 30 segundos
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+};
+
+// Hook para buscar entrevistadores únicos usando RPC
+export const useEntrevistadoresUnicos = (filtros?: {
+  periodo?: 'hoje' | 'semana' | 'mes' | 'todos';
+  cidade?: string | null;
+}) => {
+  return useQuery({
+    queryKey: ['entrevistadores-unicos', filtros],
+    queryFn: async () => {
+      const { supabase } = await import('../services/supabaseClient');
+      
+      console.log('👥 Buscando entrevistadores únicos via RPC com filtros:', filtros);
+      
+      const { data, error } = await supabase.rpc('get_entrevistadores_unicos', {
+        filtro_periodo: filtros?.periodo || 'todos',
+        filtro_cidade: filtros?.cidade || null
+      });
+      
+      if (error) {
+        console.error('❌ Erro ao buscar entrevistadores:', error);
+        throw error;
+      }
+      
+      const entrevistadores = (data || []).map((item: any) => item.entrevistador);
+      console.log('✅ Entrevistadores únicos:', entrevistadores);
+      
+      return entrevistadores;
+    },
+    staleTime: 1000 * 60, // 1 minuto
   });
 };
 

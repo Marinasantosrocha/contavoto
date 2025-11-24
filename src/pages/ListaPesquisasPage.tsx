@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePesquisas, useDeletarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
+import { Sidebar } from '../components/Sidebar';
 import { supabase } from '../services/supabaseClient';
 import { CustomSelect } from '../components/CustomSelect';
 
@@ -41,6 +42,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
   const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
   const isSuperAdmin = tipoUsuarioId === 5;
+  const isPesquisador = tipoUsuarioId === 1;
 
   // Bloqueia scroll do fundo quando o modal estiver aberto (bottom sheet)
   useEffect(() => {
@@ -421,8 +423,6 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
             )}
         </main>
 
-        <BottomNav onNavigateHome={onVoltar} />
-
         {pesquisaSelecionada && (
           <div className="modal-overlay" onClick={() => setPesquisaSelecionada(null)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -477,7 +477,11 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   }
 
   return (
-    <div className="app-container">
+    <>
+      {/* Menu Lateral para Admin/Suporte */}
+      {!isPesquisador && <Sidebar />}
+      
+    <div className={`app-container ${!isPesquisador ? 'app-with-sidebar' : ''}`}>
       <header className="modern-header home-header">
         <div className="header-content">
           <div className="header-left">
@@ -673,9 +677,6 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
         )}
       </main>
 
-      {/* Bottom Navigation */}
-      <BottomNav onNavigateHome={onVoltar} />
-
       {/* Modal de Detalhes */}
       {pesquisaSelecionada && (
         <div className="modal-overlay" onClick={() => setPesquisaSelecionada(null)}>
@@ -728,6 +729,10 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
           </div>
         </div>
       )}
+
+      {/* Menu Inferior apenas para Pesquisadores */}
+      {isPesquisador && <BottomNav onNavigateHome={onVoltar} />}
     </div>
+    </>
   );
 };

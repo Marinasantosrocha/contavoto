@@ -65,6 +65,12 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
 body {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
@@ -73,6 +79,9 @@ body {
   background-color: var(--white);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 /* ==========================================
@@ -87,6 +96,44 @@ body {
   margin: 0;
   padding: 0;
   max-width: none;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Layout com Sidebar - Desktop */
+.app-with-sidebar {
+  margin-left: 260px;
+  width: calc(100% - 260px);
+  max-width: calc(100vw - 260px);
+  transition: margin-left 0.3s ease, width 0.3s ease;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.app-with-sidebar * {
+  max-width: 100%;
+}
+
+.app-with-sidebar .main-content {
+  padding-bottom: 2rem; /* Remove espaço do BottomNav */
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.app-with-sidebar .modern-header,
+.app-with-sidebar .home-header {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Responsivo - Mobile */
+@media (max-width: 768px) {
+  .app-with-sidebar {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100vw;
+  }
 }
 
 /* ==========================================
@@ -99,12 +146,16 @@ body {
   border-bottom: 1px solid rgba(36, 44, 48, 0.1);
   position: relative;
   z-index: 10;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Versão levemente mais "grossa" para a página inicial */
 .home-header {
   padding: calc(var(--spacing-sm) + 8px) var(--spacing-md);
   border-bottom: 1px solid rgba(36, 44, 48, 0.1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 480px) {
@@ -120,7 +171,9 @@ body {
   justify-content: space-between;
   gap: var(--spacing-sm);
   width: 100%;
+  max-width: 100%;
   flex-wrap: nowrap;
+  box-sizing: border-box;
 }
 
 .header-left {
@@ -514,6 +567,8 @@ body {
   margin-bottom: var(--spacing-lg);
   border: 1px solid rgba(36, 44, 48, 0.1);
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .card-header {
@@ -590,7 +645,7 @@ body {
 .form-select:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: #242c30;
+  border-color: #1a9bff;
   box-shadow: none;
   z-index: 100;
 }
@@ -681,7 +736,10 @@ body {
   padding: var(--spacing-md) var(--spacing-lg); /* Aumentado padding lateral para 1.5rem */
   width: 100%;
   margin: 0;
-  max-width: none;
+  max-width: 100%;
+  background-color: #ffffff;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .page-section {
@@ -712,6 +770,8 @@ body {
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .stat-card {

@@ -3,6 +3,7 @@ import { db, MediaJob } from '../db/localDB';
 import { PesquisaService } from '../services/pesquisaService';
 import { useFormularios } from '../hooks/useFormularios';
 import { BottomNav } from '../components/BottomNav';
+import { Sidebar } from '../components/Sidebar';
 import '../styles/design-system.css';
 
 interface SettingsPageProps {
@@ -18,6 +19,13 @@ export const SettingsPage = ({
   onNavigateToPermissions,
   onLogout
 }: SettingsPageProps) => {
+  // Verificar tipo de usuário
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : {};
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
+  const isPesquisador = tipoUsuarioId === 1;
+  
   const { data: formularios = [], refetch } = useFormularios();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -108,11 +116,14 @@ export const SettingsPage = ({
     }
   };
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isSuperAdmin = user.tipo_usuario_id === 5;
 
   return (
-    <div className="app-container">
+    <>
+      {/* Menu Lateral para Admin/Suporte */}
+      {!isPesquisador && <Sidebar />}
+      
+    <div className={`app-container ${!isPesquisador ? 'app-with-sidebar' : ''}`}>
       <header className="app-header">
         <h1>⚙️ Configurações</h1>
         <p className="subtitle">Gerenciar formulários e dados</p>
@@ -249,10 +260,13 @@ export const SettingsPage = ({
         </section>
       </main>
 
-      <BottomNav
-        onNavigateHome={onNavigateToHome}
-        onNavigateDashboard={onNavigateToDashboard}
-      />
+      {/* Menu Inferior apenas para Pesquisadores */}
+      {isPesquisador && (
+        <BottomNav
+          onNavigateHome={onNavigateToHome}
+          onNavigateDashboard={onNavigateToDashboard}
+        />
+      )}
 
       <style>{`
         .alert {
@@ -375,5 +389,6 @@ export const SettingsPage = ({
         }
       `}</style>
     </div>
+    </>
   );
 };

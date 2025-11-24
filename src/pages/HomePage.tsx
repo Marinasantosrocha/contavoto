@@ -5,6 +5,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useFormularios } from '../hooks/useFormularios';
 import { useEstatisticasPesquisas, useEstatisticasDia, useCriarPesquisa } from '../hooks/usePesquisas';
 import { BottomNav } from '../components/BottomNav';
+import { Sidebar } from '../components/Sidebar';
 import '../styles/design-system.css';
 
 // Cidades disponíveis para seleção
@@ -265,7 +266,11 @@ export const HomePage = ({
   const saudacaoAtual = saudacoes[indiceSaudacao];
 
   return (
-    <div className="app-container">
+    <>
+      {/* Menu Lateral para Admin/Suporte */}
+      {!isPesquisador && <Sidebar />}
+      
+    <div className={`app-container ${!isPesquisador ? 'app-with-sidebar' : ''}`}>
       {/* Header Simples */}
       {!mostrarFormulario && (
         <header className="modern-header home-header">
@@ -678,8 +683,8 @@ export const HomePage = ({
         )}
       </main>
 
-      {/* Navegação Inferior - Apenas para NÃO Pesquisadores */}
-      {!isPesquisador && (
+      {/* Navegação Inferior - Apenas para Pesquisadores (mobile) */}
+      {isPesquisador && (
         <BottomNav 
           onNavigatePesquisas={onVerPesquisas}
           onNavigateDashboard={onNavigateToDashboard}
@@ -687,5 +692,6 @@ export const HomePage = ({
         />
       )}
     </div>
+    </>
   );
 };

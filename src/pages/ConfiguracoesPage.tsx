@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BottomNav } from '../components/BottomNav';
+import { Sidebar } from '../components/Sidebar';
 import '../styles/design-system.css';
 
 interface PoliticaVisualizacao {
@@ -15,6 +16,13 @@ interface PoliticaVisualizacao {
 
 export const ConfiguracoesPage: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Usuário logado
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
+  const isPesquisador = tipoUsuarioId === 1;
+  
   // Tipos de usuário definidos no backend; mantido aqui apenas como referência de UI se necessário
 
   const [politicas, setPoliticas] = useState<PoliticaVisualizacao[]>([
@@ -188,7 +196,11 @@ export const ConfiguracoesPage: React.FC = () => {
   };
 
   return (
-    <div className="app-container">
+    <>
+      {/* Menu Lateral para Admin/Suporte */}
+      {!isPesquisador && <Sidebar />}
+      
+    <div className={`app-container ${!isPesquisador ? 'app-with-sidebar' : ''}`}>
       {/* Header Moderno */}
       <header className="modern-header home-header">
         <div className="header-content">
@@ -400,8 +412,9 @@ export const ConfiguracoesPage: React.FC = () => {
         </div>
       </main>
 
-      {/* Navegação Inferior */}
-      <BottomNav />
+      {/* Menu Inferior apenas para Pesquisadores */}
+      {isPesquisador && <BottomNav />}
     </div>
+    </>
   );
 };

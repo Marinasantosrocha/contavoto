@@ -8,6 +8,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .stat-card-dashboard {
@@ -17,14 +20,14 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  box-shadow: 0 2px 8px rgba(36, 44, 48, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   border-left: 4px solid #1a9bff;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stat-card-dashboard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(36, 44, 48, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .stat-card-dashboard.primary {
@@ -70,7 +73,6 @@
 .taxa-container {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
 }
 
 .taxa-chart {
@@ -313,6 +315,139 @@
 
 .stats-list-value.warning {
   color: #FFC107;
+}
+
+/* ===================================
+   LAYOUT DESKTOP ESTILO POWER BI
+   ================================== */
+
+/* Container principal do dashboard desktop */
+.dashboard-desktop {
+  padding: 1.5rem 2rem;
+  max-width: 100%;
+  background-color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Filtros na mesma linha - alinhados com os cards */
+.dashboard-filters-row {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-filters-row .simple-select-group {
+  margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Cada filtro ocupa o mesmo espaço que os cards */
+.dashboard-filters-row .simple-select-group:nth-child(1) {
+  grid-column: span 4;
+}
+
+.dashboard-filters-row .simple-select-group:nth-child(2) {
+  grid-column: span 4;
+}
+
+.dashboard-filters-row .simple-select-group:nth-child(3) {
+  grid-column: span 4;
+}
+
+/* Grid estilo Power BI */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
+  grid-auto-rows: minmax(300px, auto);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Cards com diferentes tamanhos */
+.dashboard-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1.25rem;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-card-large {
+  grid-column: span 6;
+}
+
+.dashboard-card-medium {
+  grid-column: span 4;
+}
+
+.dashboard-card-full {
+  grid-column: span 12;
+}
+
+/* Ajustes para cards dentro do grid */
+.dashboard-card .card {
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+
+.dashboard-card .card-header {
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 1400px) {
+  .dashboard-card-large {
+    grid-column: span 12;
+  }
+  
+  .dashboard-card-medium {
+    grid-column: span 6;
+  }
+  
+  /* Cards com span inline devem se adaptar */
+  .dashboard-card[style*="span 6"] {
+    grid-column: span 12 !important;
+  }
+}
+
+/* Telas médias - 2 colunas */
+@media (max-width: 1200px) {
+  .dashboard-filters-row .simple-select-group:nth-child(1),
+  .dashboard-filters-row .simple-select-group:nth-child(2),
+  .dashboard-filters-row .simple-select-group:nth-child(3) {
+    grid-column: span 6;
+  }
+}
+
+/* Tablets e mobile - 1 coluna */
+@media (max-width: 768px) {
+  .dashboard-card-medium {
+    grid-column: span 12;
+  }
+  
+  .dashboard-filters-row .simple-select-group:nth-child(1),
+  .dashboard-filters-row .simple-select-group:nth-child(2),
+  .dashboard-filters-row .simple-select-group:nth-child(3) {
+    grid-column: span 12;
+  }
+  
+  .dashboard-filters-row .simple-select-group {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 /* Responsivo */
