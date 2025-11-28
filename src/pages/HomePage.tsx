@@ -70,18 +70,18 @@ export const HomePage = ({
   const [numero, setNumero] = useState('');
   const [numeroProximo, setNumeroProximo] = useState('');
   const [semNumero, setSemNumero] = useState(false);
-  const [cidade, setCidade] = useState('Ibiaí');
+  const [cidade, setCidade] = useState('Ponto Chique');
 
   useEffect(() => {
-    setCidade('Ibiaí');
+    setCidade('Ponto Chique');
     const migrarCidadeCache = () => {
       const ultimoEndereco = carregarUltimoEndereco();
       if (ultimoEndereco && ultimoEndereco.cidade === 'Lagoa dos Patos') {
         salvarUltimoEndereco({
           endereco: ultimoEndereco.endereco,
-          cidade: 'Ibiaí'
+          cidade: 'Ponto Chique'
         });
-        setCidade('Ibiaí');
+        setCidade('Ponto Chique');
       }
     };
     migrarCidadeCache();
@@ -118,8 +118,8 @@ export const HomePage = ({
       if (ultimoEndereco) {
         setEndereco(ultimoEndereco.endereco);
         const cidadeRecuperada = ultimoEndereco.cidade === 'Lagoa dos Patos'
-          ? 'Ibiaí'
-          : (ultimoEndereco.cidade || 'Ibiaí');
+          ? 'Ponto Chique'
+          : (ultimoEndereco.cidade || 'Ponto Chique');
         setCidade(cidadeRecuperada);
         // Número sempre vazio
         setNumero('');
@@ -190,7 +190,7 @@ export const HomePage = ({
       // Salvar endereço no cache (sem o número)
       salvarUltimoEndereco({
         endereco,
-        cidade: cidade === 'Lagoa dos Patos' ? 'Ibiaí' : cidade
+        cidade: cidade === 'Lagoa dos Patos' ? 'Ponto Chique' : cidade
       });
       
       const pesquisaId = await criarPesquisa.mutateAsync({
@@ -526,39 +526,11 @@ export const HomePage = ({
                         {!semNumero && (
                           <input
                             type="text"
-                            inputMode="numeric"
                             className="form-input"
                             value={numero}
-                            onKeyDown={(e) => {
-                              // Bloqueia qualquer tecla que não seja número ou teclas de controle
-                              const tecla = e.key;
-                              const teclasPermitidas = [
-                                'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-                                'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'
-                              ];
-                              
-                              // Permite teclas de controle
-                              if (teclasPermitidas.includes(tecla) || e.ctrlKey || e.metaKey) {
-                                return;
-                              }
-                              
-                              // Permite apenas números (0-9)
-                              if (!/^[0-9]$/.test(tecla)) {
-                                e.preventDefault();
-                                return false;
-                              }
-                            }}
                             onChange={(e) => {
-                              // Remove tudo que não é número (proteção adicional)
-                              const numeros = e.target.value.replace(/\D/g, '');
-                              setNumero(numeros);
-                            }}
-                            onPaste={(e) => {
-                              // Bloqueia colar e remove caracteres não numéricos
-                              e.preventDefault();
-                              const texto = e.clipboardData.getData('text');
-                              const numeros = texto.replace(/\D/g, '');
-                              setNumero(numeros);
+                              // Permite letras e números
+                              setNumero(e.target.value);
                             }}
                             placeholder="Número da casa"
                             style={{ width: '150px' }}
@@ -593,34 +565,11 @@ export const HomePage = ({
                           <label className="form-label" style={{ marginBottom: '0.5rem' }}>Próximo ao Nº *</label>
                           <input
                             type="text"
-                            inputMode="numeric"
                             className="form-input"
                             value={numeroProximo}
-                            onKeyDown={(e) => {
-                              const tecla = e.key;
-                              const teclasPermitidas = [
-                                'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-                                'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'
-                              ];
-
-                              if (teclasPermitidas.includes(tecla) || e.ctrlKey || e.metaKey) {
-                                return;
-                              }
-
-                              if (!/^[0-9]$/.test(tecla)) {
-                                e.preventDefault();
-                                return false;
-                              }
-                            }}
                             onChange={(e) => {
-                              const numeros = e.target.value.replace(/\D/g, '');
-                              setNumeroProximo(numeros);
-                            }}
-                            onPaste={(e) => {
-                              e.preventDefault();
-                              const texto = e.clipboardData.getData('text');
-                              const numeros = texto.replace(/\D/g, '');
-                              setNumeroProximo(numeros);
+                              // Permite letras e números
+                              setNumeroProximo(e.target.value);
                             }}
                             placeholder="Digite o número mais próximo"
                           />
