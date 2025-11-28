@@ -118,8 +118,8 @@ function AppContent() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       
-      {/* PWA Install Banner - apenas para pesquisadores (mobile) */}
-      {showInstallPrompt && isPesquisador && (
+      {/* PWA Install Banner */}
+      {showInstallPrompt && (
         <div className="pwa-install-banner">
           <div className="install-content">
             <div className="install-icon">📱</div>
