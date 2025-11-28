@@ -53,18 +53,23 @@ export function usePWA() {
   }, []);
 
   const installApp = async () => {
+    // Fecha o banner imediatamente
+    setShowInstallPrompt(false);
+    
+    // Se o navegador suporta instalação nativa, chama o prompt direto
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        console.log('Usuário aceitou instalar o PWA');
-      } else {
-        console.log('Usuário rejeitou instalar o PWA');
+      try {
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('✅ PWA instalação:', outcome === 'accepted' ? 'aceita' : 'rejeitada');
+        setDeferredPrompt(null);
+      } catch (error) {
+        console.error('❌ Erro ao instalar PWA:', error);
       }
-      
-      setDeferredPrompt(null);
-      setShowInstallPrompt(false);
+    } else {
+      // Se não tem prompt nativo, abre instruções do navegador
+      console.log('ℹ️ Use o menu do navegador para instalar');
+      // Não mostra alert - deixa o usuário descobrir pelo menu do navegador
     }
   };
 
