@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 export function usePWA() {
   const [isInstalled, setIsInstalled] = useState(false);
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(true); // Sempre true por padrão
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
@@ -13,13 +13,24 @@ export function usePWA() {
       // Ou se está rodando no iOS como PWA
       const isIOSPWA = (window.navigator as any).standalone === true;
       
-      setIsInstalled(isStandalone || isIOSPWA);
+      const installed = isStandalone || isIOSPWA;
+      console.log('🔍 PWA - Verificando instalação:', {
+        isStandalone,
+        isIOSPWA,
+        installed
+      });
+      setIsInstalled(installed);
+      // Se já está instalado, não mostra o prompt
+      if (installed) {
+        setShowInstallPrompt(false);
+      }
     };
 
     checkIfInstalled();
 
     // Listener para o evento beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('✅ PWA - Evento beforeinstallprompt disparado!');
       e.preventDefault();
       setDeferredPrompt(e);
       setShowInstallPrompt(true);
@@ -68,6 +79,7 @@ export function usePWA() {
     dismissInstallPrompt,
   };
 }
+
 
 
 
