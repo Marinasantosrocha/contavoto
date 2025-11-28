@@ -100,7 +100,7 @@ export default function CheckboxQuestion({
   // Para campos pessoais, o botão habilita quando checkbox está marcado E há valor (se necessário)
   // Para telefone, habilita se "Não tem" marcado OU número digitado
   // Para campos não pessoais, só precisa do checkbox
-  const campoPessoalOpcionalSemValor = isCampoPessoal && campo.id === 'faixa_etaria';
+  const campoPessoalOpcionalSemValor = isCampoPessoal && (campo.id === 'faixa_etaria' || campo.id === 'nome_morador');
   const podeAvancar = isCampoPessoal 
     ? perguntei && (
         campo.opcoes ? valor : 
