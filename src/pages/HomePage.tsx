@@ -70,18 +70,18 @@ export const HomePage = ({
   const [numero, setNumero] = useState('');
   const [numeroProximo, setNumeroProximo] = useState('');
   const [semNumero, setSemNumero] = useState(false);
-  const [cidade, setCidade] = useState('Ponto Chique');
+  const [cidade, setCidade] = useState('Jequitaí');
 
   useEffect(() => {
-    setCidade('Ponto Chique');
+    setCidade('Jequitaí');
     const migrarCidadeCache = () => {
       const ultimoEndereco = carregarUltimoEndereco();
       if (ultimoEndereco && ultimoEndereco.cidade === 'Lagoa dos Patos') {
         salvarUltimoEndereco({
           endereco: ultimoEndereco.endereco,
-          cidade: 'Ponto Chique'
+          cidade: 'Jequitaí'
         });
-        setCidade('Ponto Chique');
+        setCidade('Jequitaí');
       }
     };
     migrarCidadeCache();
@@ -118,8 +118,8 @@ export const HomePage = ({
       if (ultimoEndereco) {
         setEndereco(ultimoEndereco.endereco);
         const cidadeRecuperada = ultimoEndereco.cidade === 'Lagoa dos Patos'
-          ? 'Ponto Chique'
-          : (ultimoEndereco.cidade || 'Ponto Chique');
+          ? 'Jequitaí'
+          : (ultimoEndereco.cidade || 'Jequitaí');
         setCidade(cidadeRecuperada);
         // Número sempre vazio
         setNumero('');
@@ -190,7 +190,7 @@ export const HomePage = ({
       // Salvar endereço no cache (sem o número)
       salvarUltimoEndereco({
         endereco,
-        cidade: cidade === 'Lagoa dos Patos' ? 'Ponto Chique' : cidade
+        cidade: cidade === 'Lagoa dos Patos' ? 'Jequitaí' : cidade
       });
       
       const pesquisaId = await criarPesquisa.mutateAsync({
