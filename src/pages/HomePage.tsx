@@ -10,7 +10,7 @@ import '../styles/design-system.css';
 
 // Cidades disponíveis para seleção
 const CIDADES_DISPONIVEIS = [
-  'Ibiaí'
+  'Jequitaí'
 ];
 
 interface HomePageProps {
