@@ -28,9 +28,17 @@ export const PermissionsPage: React.FC = () => {
   // Verificar tipo de usuário
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : {};
-  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'suporte' ? 3 : t === 'pesquisador' ? 1 : undefined;
   const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
   const isPesquisador = tipoUsuarioId === 1;
+  const isSuperAdmin = tipoUsuarioId === 5;
+  
+  // Redirecionar se não for superadmin
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      navigate('/');
+    }
+  }, [isSuperAdmin, navigate]);
   
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);

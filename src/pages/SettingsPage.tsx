@@ -222,6 +222,8 @@ export const SettingsPage = ({
               <span className="info-value">
                 {user.tipo_usuario_id === 1 ? 'Pesquisador' :
                  user.tipo_usuario_id === 2 ? 'Candidato' :
+                 user.tipo_usuario_id === 3 ? 'Suporte' :
+                 user.tipo_usuario_id === 4 ? 'Admin' :
                  user.tipo_usuario_id === 5 ? 'Super Admin' : 'Outro'}
               </span>
             </div>

@@ -22,8 +22,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   // const [audioProgress, setAudioProgress] = useState<Record<number, number>>({});
-  const [playingId, setPlayingId] = useState<number | null>(null);
-  const audioMapRef = useMemo(() => new Map<number, HTMLAudioElement>(), []);
+  // Removido: playingId, setPlayingId, audioMapRef (não utilizados após remoção de togglePlayCard)
   // Paginação da tabela (Admin)
   const [adminLimit] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState<number>(0);
@@ -102,13 +101,13 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   
   // Extrair opções para os filtros
   const opcoesCidades = useMemo(() => {
-    const cidades = [...new Set(todasPesquisasTabela.map(p => p.cidade).filter(Boolean))].sort();
-    return cidades;
+    const cidades = [...new Set(todasPesquisasTabela.map((p: any) => p.cidade).filter(Boolean))] as string[];
+    return cidades.sort();
   }, [todasPesquisasTabela]);
   
   const opcoesEntrevistadoras = useMemo(() => {
-    const entrevistadoras = [...new Set(todasPesquisasTabela.map(p => p.entrevistadora).filter(Boolean))].sort();
-    return entrevistadoras;
+    const entrevistadoras = [...new Set(todasPesquisasTabela.map((p: any) => p.entrevistadora).filter(Boolean))] as string[];
+    return entrevistadoras.sort();
   }, [todasPesquisasTabela]);
   
   // Aplicar paginação nas pesquisas filtradas
@@ -141,9 +140,9 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
 
   // Usuário e papel
   const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
-  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'suporte' ? 3 : t === 'pesquisador' ? 1 : undefined;
   const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
-  const isSuperAdmin = tipoUsuarioId === 5;
+  const isSuporteOuSuperAdmin = tipoUsuarioId === 3 || tipoUsuarioId === 5;
   const isPesquisador = tipoUsuarioId === 1;
 
   // Bloqueia scroll do fundo quando o modal estiver aberto (bottom sheet)
@@ -167,81 +166,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
   //   return `${m}:${s.toString().padStart(2, '0')}`;
   // };
 
-  const beautifyKey = (key: string) => {
-    // snake_case -> 'Palavra palavra' (primeira letra maiúscula, demais minúsculas)
-    const s = key.replace(/_/g, ' ').trim();
-    if (!s) return s;
-    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-  };
-
-  const togglePlayCard = async (id: number, url?: string | null) => {
-    if (!url) return;
-    // pausa o que estiver tocando
-    if (playingId && audioMapRef.has(playingId)) {
-      const current = audioMapRef.get(playingId)!;
-      current.pause();
-      current.currentTime = 0;
-    }
-    // se o mesmo card foi clicado, pare e desative
-    if (playingId === id) {
-      setPlayingId(null);
-      return;
-    }
-
-    let audio = audioMapRef.get(id);
-    if (!audio) {
-      audio = new Audio(url);
-      audio.preload = 'metadata';
-      audio.addEventListener('ended', () => {
-        setPlayingId(null);
-      });
-      audioMapRef.set(id, audio);
-    }
-    await audio.play();
-    setPlayingId(id);
-  };
-
-  const handleDownloadAudio = async (e: React.MouseEvent, url?: string | null) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!url) return;
-
-    const nameFromUrl = (() => {
-      try {
-        const u = new URL(url);
-        const path = u.pathname.split('/')
-          .filter(Boolean)
-          .pop();
-        return (path && decodeURIComponent(path)) || 'audio.mp3';
-      } catch {
-        const parts = url.split('?')[0].split('/');
-        return parts[parts.length - 1] || 'audio.mp3';
-      }
-    })();
-
-    try {
-      const resp = await fetch(url, { credentials: 'omit' });
-      const blob = await resp.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = nameFromUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
-    } catch (err) {
-      // Fallback para tentar download direto pela URL
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nameFromUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
+  // Funções não utilizadas foram removidas: beautifyKey, togglePlayCard, handleDownloadAudio
 
   // Swipe handler para mobile
   const minSwipeToReveal = 80; // pixels para revelar o botão
@@ -376,8 +301,52 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
     return mapa[campo] || campo;
   };
 
+  // Função para baixar dados como Excel (CSV)
+  const baixarExcel = () => {
+    // Criar cabeçalho CSV
+    const headers = ['Data', 'Cidade', 'Endereço', 'Entrevistadora', 'Nome', 'Aniversário', 'Aut. Contato', 'WhatsApp'];
+    
+    // Criar linhas de dados
+    const linhas = pesquisasFiltradas.map((p: any) => {
+      const autorizacao = formatAutorizacao(p.autorizacao_contato);
+      const dataPesquisa = p.data_pesquisa ? new Date(p.data_pesquisa).toLocaleDateString('pt-BR') : '-';
+      
+      return [
+        dataPesquisa,
+        p.cidade || '-',
+        p.endereco || '-',
+        p.entrevistadora || '-',
+        p.nome_entrevistado || '-',
+        formatDataNascimento(p.data_nascimento),
+        autorizacao.text,
+        p.whatsapp || '-'
+      ];
+    });
+    
+    // Combinar cabeçalho e linhas
+    const csvContent = [
+      headers.join(','),
+      ...linhas.map(linha => linha.map(campo => `"${campo}"`).join(','))
+    ].join('\n');
+    
+    // Criar blob e download
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const dataHoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pesquisas_${dataHoje}.csv`);
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
-  if (isSuperAdmin) {
+
+  if (isSuporteOuSuperAdmin) {
     return (
       <>
         <Sidebar />
@@ -407,6 +376,34 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                 </svg>
                 <h1 className="header-title">Pesquisas Aceitas</h1>
               </div>
+              <div className="header-right">
+                <button 
+                  onClick={baixarExcel}
+                  className="btn-download-excel"
+                  title="Baixar dados como Excel"
+                  style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M7 10L12 15L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Exportar
+                </button>
+              </div>
             </div>
           </header>
 
@@ -433,7 +430,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                 label="Cidade"
                 options={[
                   { value: '', label: 'Todas as Cidades' },
-                  ...opcoesCidades.map(c => ({ value: c, label: c }))
+                  ...opcoesCidades.map((c: string) => ({ value: c as string, label: c as string }))
                 ]}
                 value={cidadeSelecionada || ''}
                 onChange={(value) => {
@@ -446,7 +443,7 @@ export const ListaPesquisasPage = ({ onVoltar, onEditarPesquisa }: ListaPesquisa
                 label="Entrevistadora"
                 options={[
                   { value: '', label: 'Todas as Entrevistadoras' },
-                  ...opcoesEntrevistadoras.map(e => ({ value: e, label: e }))
+                  ...opcoesEntrevistadoras.map((e: string) => ({ value: e as string, label: e as string }))
                 ]}
                 value={entrevistadoraSelecionada || ''}
                 onChange={(value) => setEntrevistadoraSelecionada((value as string) || null)}

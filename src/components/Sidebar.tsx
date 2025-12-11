@@ -14,8 +14,9 @@ export const Sidebar = ({ onLogout }: SidebarProps) => {
   // Verificar tipo de usuário
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : {};
-  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'pesquisador' ? 1 : undefined;
+  const tipoToId = (t?: string) => t === 'superadmin' ? 5 : t === 'admin' ? 4 : t === 'suporte' ? 3 : t === 'pesquisador' ? 1 : undefined;
   const tipoUsuarioId: number | undefined = typeof user?.tipo_usuario_id === 'number' ? user.tipo_usuario_id : tipoToId(user?.tipo_usuario);
+  const isSuperAdmin = tipoUsuarioId === 5;
   const isAdmin = tipoUsuarioId !== undefined && tipoUsuarioId >= 4;
 
   const handleLogout = () => {
@@ -69,7 +70,7 @@ export const Sidebar = ({ onLogout }: SidebarProps) => {
           <span>Dashboard</span>
         </button>
 
-        {isAdmin && (
+        {isSuperAdmin && (
           <button
             className={`sidebar-nav-item ${isActive('/permissions') ? 'active' : ''}`}
             onClick={() => navigate('/permissions')}

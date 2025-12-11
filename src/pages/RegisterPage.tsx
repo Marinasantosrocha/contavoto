@@ -173,6 +173,7 @@ export const RegisterPage: React.FC = () => {
                 >
                   <option value="">Selecione o tipo de usuário...</option>
                   <option value="1">Pesquisador</option>
+                  <option value="3">Suporte</option>
                   <option value="5">Superadmin</option>
                 </select>
               </div>

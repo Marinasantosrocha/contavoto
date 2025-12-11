@@ -57,6 +57,8 @@ export const HomePage = ({
   })();
   const isPesquisador = tipoUsuarioId === 1; // ID do pesquisador
   const isSuperAdmin = tipoUsuarioId === 5; // ID do superadmin
+  const isSuporte = tipoUsuarioId === 3; // ID do suporte
+  const isSuporteOuSuperAdmin = tipoUsuarioId === 3 || tipoUsuarioId === 5;
   
   // React Query hooks - filtrar por usuário se for pesquisador
   const { data: formularios = [] } = useFormularios();
@@ -456,8 +458,8 @@ export const HomePage = ({
           </>
         )}
 
-        {/* Seção de Estatísticas - Apenas para NÃO Pesquisadores e NÃO SuperAdmin */}
-        {!isPesquisador && !isSuperAdmin && (
+        {/* Seção de Estatísticas - Apenas para NÃO Pesquisadores, NÃO SuperAdmin e NÃO Suporte */}
+        {!isPesquisador && !isSuperAdmin && !isSuporte && (
           <div className="page-section">
             <div className="stats-grid">
               <div className="stat-card">

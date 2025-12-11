@@ -19,6 +19,7 @@ export const BottomNav = ({
   // Verificar se é super admin
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isSuperAdmin = user.tipo_usuario_id === 5 || user.tipo === 5;
+  const isSuporteOuSuperAdmin = user.tipo_usuario_id === 3 || user.tipo_usuario_id === 5 || user.tipo === 3 || user.tipo === 5;
 
   const handleHome = () => {
     if (onNavigateHome) {
@@ -74,7 +75,7 @@ export const BottomNav = ({
         </div>
 
         {/* Usuários apenas para super admin */}
-        {isSuperAdmin && (
+        {isSuporteOuSuperAdmin && (
           <div 
             className={`nav-item ${isActive('/permissions') ? 'active' : ''}`}
             onClick={handlePermissions}
